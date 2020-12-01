@@ -1,0 +1,4 @@
+let createRealtime = `create table if not exists realtime(
+    id int primary key auto_increment,
+    UUID varchar(255)not null
+    )`;
