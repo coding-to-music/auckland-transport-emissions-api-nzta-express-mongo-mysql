@@ -47,16 +47,19 @@ module.exports = function () {
         data.filter(filterFunction);
     }
 
-    this.execute = function (sqlStatement) {
-        let r;
-        con.query(sqlStatement, function (err, results, fields) {
-            if (err) {
-                console.log(err.message);
-            } else {
-                r = results;
-            }
-        });
-        return r;
+    this.execute = async function (sqlStatement) {
+        // new Promise((resolve, rej) => {
+            let r = await con.query(sqlStatement, function (err, results, fields) {
+                if (err) {
+                    console.log(err.message);
+                } else {
+                    console.log("execute results: " + results);
+                    // resolve(results);
+                    return results;
+                }
+            })
+            return r;
+        // })
     }
 
     this.closeConnection = function() {
