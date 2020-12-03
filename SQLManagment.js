@@ -1,13 +1,13 @@
+let mysql = require("mysql");
 module.exports = function () {
-    let con = mysql.createConnection({
-        host: "johnny.heliohost.org",
-        user: "chriswil_c",
-        password: "w5eiDgh@39GNmtA"
-    });
+    let con;
     this.data;
 
+    this.createConnection = function (connectObj) {
+        con = mysql.createConnection(connectObj);
+    }
+
     this.passToSQL = async function () {
-        const client = await pool.connect();
 
         //Write some query fekkin things
 
@@ -23,19 +23,19 @@ module.exports = function () {
 
     }
 
-    this.createStatement(statement, selectors, table, headers, rows) = function() {
+    this.createStatement = function() {
 
     }
 
-    this.insertStatement() = function() {
+    this.insertStatement = function() {
 
     }
 
-    this.updateStatement() = function() {
+    this.updateStatement = function() {
 
     }
 
-    this.selectStatement() = function() {
+    this.selectStatement = function() {
 
     }
 
@@ -47,22 +47,23 @@ module.exports = function () {
         data.filter(filterFunction);
     }
 
-    this.connectAndExecute = function (sqlStatement) {
-        con.connect(function (err) {
-            if (err) throw err;
-            console.log("Connected!");
+    this.execute = function (sqlStatement) {
+        let r;
+        con.query(sqlStatement, function (err, results, fields) {
+            if (err) {
+                console.log(err.message);
+            } else {
+                r = results;
+            }
+        });
+        return r;
+    }
 
-            connection.query(sqlStatement, function (err, results, fields) {
-                if (err) {
-                    console.log(err.message);
-                }
-            });
-
-            connection.end(function (err) {
-                if (err) {
-                    return console.log(err.message);
-                }
-            });
+    this.closeConnection = function() {
+        con.end(function (err) {
+            if (err) {
+                return console.log(err.message);
+            }
         });
     }
 }

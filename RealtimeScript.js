@@ -22,15 +22,12 @@ let promise = new Promise((res, rej) => {
 function onDataReceieved(data) {
   console.log(data);
 
-  let createRealtime = `create table if not exists realtime(
-    id int primary key auto_increment,
-    UUID varchar(255)not null
-  )`;
+  //Get data to post
 
-//Get data to post
+  let insertStmt = "insert into realtime() VALUES ? ";
+  let entries; //Some array that stores rows, eg [ [timedpt, timearv, vehicle], [timedpt, timearv, vehicle] ]
 
-let insertStmt = "insert into realtime() VALUES ? ";
-let entries; //Some array that stores rows, eg [ [timedpt, timearv, vehicle], [timedpt, timearv, vehicle] ]
+  
 }
 
 async function callTripUpdates() {
