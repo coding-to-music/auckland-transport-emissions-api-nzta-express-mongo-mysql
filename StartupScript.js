@@ -15,7 +15,8 @@ let createSchema = "create schema processing;";
 
 let createRealtime = `create table if not exists realtime_raw(
     UUID varchar(255) PRIMARY KEY not null,
-    stop_time_arrival JSON,
+    arrival BOOLEAN,
+    stop_time int,
     stop_id varchar(255),
     stop_sequence int,
     direction_id int,
@@ -40,7 +41,6 @@ setupDB();
 async function setupDB() {
   sqlInstance.createConnection(connectionObject);
   var x = await sqlInstance.execute(createRealtime);
-  console.log(x);
   var y = await sqlInstance.execute("SHOW TABLES;");
-  console.log(y);
+  sqlInstance.closeConnection();
 }

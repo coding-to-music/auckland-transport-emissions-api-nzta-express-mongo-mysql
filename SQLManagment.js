@@ -27,16 +27,24 @@ module.exports = function () {
 
     }
 
-    this.insertStatement = function() {
-
+    this.insertStatement = async function(sqlStatement, args) {
+        let r = await con.query(sqlStatement, [args], function (err, results, fields) {
+            if (err) {
+                console.log(err.message);
+            } else {
+                console.log("Row inserted: " + results.affectedRows);
+                return results;
+            }
+        })
+        return r;
     }
 
     this.updateStatement = function() {
 
     }
 
-    this.selectStatement = function() {
-
+    this.selectStatement = async function() {
+        
     }
 
     this.formQuery = function (command, table, whereConds) {
@@ -53,7 +61,8 @@ module.exports = function () {
                 if (err) {
                     console.log(err.message);
                 } else {
-                    console.log("execute results: " + results);
+                    console.log("execute results: ");
+                    console.log(results);
                     // resolve(results);
                     return results;
                 }

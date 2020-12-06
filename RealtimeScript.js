@@ -2,7 +2,14 @@
 const fetch = require('node-fetch');
 let sqlManager = require('./SQLManagment.js');
 let sqlInstance = new sqlManager();
-let mysql = require("mysql");
+let mysql = require("./node_modules/mysql");
+
+let connectionObject = {
+  host: "johnny.heliohost.org",
+  user: "chriswil_1",
+  password: "w5eiDgh@39GNmtA",
+  database: "chriswil_ate_model"
+}
 
 let key = "b9f2e4f0b5e140b79a698c0bb9298a7f";
 url = '', data = {};
@@ -20,14 +27,39 @@ let promise = new Promise((res, rej) => {
 });
 
 function onDataReceieved(data) {
-  console.log(data);
+  console.log(data.response.entity);
 
-  //Get data to post
+  let flat = data.response.entity.map(d => {
+    let UUID, stop_time_arrival, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id;
+    UUID = d.trip_update.trip.start_date + "-" + d.trip_update.trip.trip_id;
+    console.log(d.trip_update);
 
-  let insertStmt = "insert into realtime() VALUES ? ";
-  let entries; //Some array that stores rows, eg [ [timedpt, timearv, vehicle], [timedpt, timearv, vehicle] ]
+    let arrived = null;
+    if (d.trip_update.stop_time_update != undefined) {
+      arrived = d.trip_update.stop_time_update.arrival == undefined ? 1 : 0;
+      let property = arrived === 0 ? "departure" : "arrival";
+      stop_time_arrival = d.trip_update.stop_time_update[property];
+      stop_id = d.trip_update.stop_time_update.stop_id;
+      stop_sequence = d.trip_update.stop_time_update.stop_sequence;
+    }
+    
+    direction_id = d.trip_update.trip.direction_id;
+    route_id = d.trip_update.route_id;
+    date = d.trip_update.trip.start_date;
+    start_time = d.trip_update.trip.start_time;
+    trip_id = d.trip_update.trip.trip_id;
 
-  
+    vehicle_id = d.trip_update.vehicle != undefined ? d.trip_update.vehicle.id : null;
+    
+    return [UUID, stop_time_arrival, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id];
+  })
+
+  console.log(flat);
+  sqlInstance.createConnection(connectionObject);
+  let insertStmt = "insert into realtime_raw (UUID, arrival, stop_time, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id) VALUES ? "
+  sqlInstance.insertStatement(insertStmt, flat);
+
+  sqlInstance.execute("SELECT * FROM realtime_raw;");
 }
 
 async function callTripUpdates() {
