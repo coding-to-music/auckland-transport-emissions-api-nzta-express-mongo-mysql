@@ -1,0 +1,24 @@
+{
+  "name": "ate",
+  "version": "1.0.0",
+  "description": "",
+  "main": "StartupScript.js",
+  "dependencies": {
+    "mysql": "^2.18.1",
+    "node-fetch": "^2.6.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chriswtodd/ATE.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/chriswtodd/ATE/issues"
+  },
+  "homepage": "https://github.com/chriswtodd/ATE#readme"
+}
