@@ -16,6 +16,8 @@ let createSchema = "create schema processing;";
 let createRealtime = `create table if not exists realtime_raw(
     UUID varchar(255) PRIMARY KEY not null,
     arrival BOOLEAN,
+    start_id varchar(255),
+    start_time varchar(255),
     stop_time int,
     stop_id varchar(255),
     stop_sequence int,
@@ -39,8 +41,19 @@ setupDB();
 // sqlInstance.execute(createDB);
 // sqlInstance.execute(createSchema);
 async function setupDB() {
-  sqlInstance.createConnection(connectionObject);
-  var x = await sqlInstance.execute(createRealtime);
-  var y = await sqlInstance.execute("SHOW TABLES;");
+  // sqlInstance.create(connectionObject);
+  // var t = sqlInstance.execute("DESCRIBE realtime_raw;");
+  // sqlInstance.closeConnection();
+  // sqlInstance.create(connectionObject);
+  // var x = sqlInstance.execute(createRealtime);
+  // sqlInstance.closeConnection();
+  con = mysql.createConnection(connectionObject);
+  con.connect();
+  con.query("DESCRIBE realtime_raw;", function(err, results, fields) {
+    if (err) console.log(err);
+    else console.log(results);
+  })
+  var y = sqlInstance.execute("SHOW TABLES;");
+  // console.log(t, x, y);
   sqlInstance.closeConnection();
 }

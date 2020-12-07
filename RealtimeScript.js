@@ -2,7 +2,7 @@
 const fetch = require('node-fetch');
 let sqlManager = require('./SQLManagment.js');
 let sqlInstance = new sqlManager();
-let mysql = require("./node_modules/mysql");
+let mysql = require("mysql");
 
 let connectionObject = {
   host: "johnny.heliohost.org",
@@ -15,28 +15,22 @@ let key = "b9f2e4f0b5e140b79a698c0bb9298a7f";
 url = '', data = {};
 
 let listOfURLS = ["https://api.at.govt.nz/v2/gtfs/trips", "https://api.at.govt.nz/v2/gtfs/routes", "https://api.at.govt.nz/v2/gtfs/calendar", "https://api.at.govt.nz/v2/gtfs/versions", ""];
-let answers = {};
 
-let tableOfGODS = [];
-
-let promise = new Promise((res, rej) => {
+// let promise = new Promise((res, rej) => {
   callTripUpdates().then(data=> {
     onDataReceieved(data);
   });
-  res();
-});
+  // res();
+// });
 
-function onDataReceieved(data) {
-  console.log(data.response.entity);
-
+async function onDataReceieved(data) {
   let flat = data.response.entity.map(d => {
     let UUID, stop_time_arrival, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id;
     UUID = d.trip_update.trip.start_date + "-" + d.trip_update.trip.trip_id;
-    console.log(d.trip_update);
 
     let arrived = null;
     if (d.trip_update.stop_time_update != undefined) {
-      arrived = d.trip_update.stop_time_update.arrival == undefined ? 1 : 0;
+      arrived = d.trip_update.stop_time_update.arrival == undefined ? true : false;
       let property = arrived === 0 ? "departure" : "arrival";
       stop_time_arrival = d.trip_update.stop_time_update[property];
       stop_id = d.trip_update.stop_time_update.stop_id;
@@ -51,15 +45,45 @@ function onDataReceieved(data) {
 
     vehicle_id = d.trip_update.vehicle != undefined ? d.trip_update.vehicle.id : null;
     
-    return [UUID, stop_time_arrival, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id];
+    return [UUID, arrived, stop_time_arrival, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id];
   })
 
-  console.log(flat);
-  sqlInstance.createConnection(connectionObject);
-  let insertStmt = "insert into realtime_raw (UUID, arrival, stop_time, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id) VALUES ? "
-  sqlInstance.insertStatement(insertStmt, flat);
+  //Create connection and insert all data
+  // sqlInstance.create(connectionObject);
+  // await mysql.createConnection(connectionObject);
+  // c.connect();
+  // console.log(c);
 
-  sqlInstance.execute("SELECT * FROM realtime_raw;");
+  con = mysql.createConnection(connectionObject);
+  con.connect();
+
+  con.query("DESCRIBE realtime_raw;", function(err, results, fields) {
+    if (err) console.log(err);
+    else console.log(results);
+  })
+
+  let insertStmt = "insert into realtime_raw (UUID, arrival, stop_time, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id) VALUES ? "
+  // sqlInstance.insertStatement(insertStmt, flat);
+  con.query(insertStmt, [flat], function (err, results, fields) {
+    console.log(err, results, fields);
+    if (err) throw err
+    else {
+        console.log("Row inserted: " + results.affectedRows);
+        console.log(results);
+    }
+  })
+
+  con.query("SELECT * FROM realtime_raw;", function (err, results, fields) {
+    if (err) {
+        console.log(err.message);
+    } else {
+        console.log("execute results: ");
+        console.log(results);
+        // resolve(results);
+    }
+  })
+
+  con.end();
 }
 
 async function callTripUpdates() {
@@ -77,14 +101,7 @@ async function callTripUpdates() {
     referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
     //body: JSON.stringify(data) // body data type must match "Content-Type" header
   });
-  return response.json();  
-  // .then(
-  //   function (response) {
-  //     response.json().then(function (data) {
-  //       return data;
-  //     }); // parses JSON response into native JavaScript objects)
-  //   }
-  // )
+  return response.json(); 
 }
 
 function createEmissions(app_emissions) {

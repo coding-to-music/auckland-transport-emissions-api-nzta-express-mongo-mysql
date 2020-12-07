@@ -3,8 +3,15 @@ module.exports = function () {
     let con;
     this.data;
 
-    this.createConnection = function (connectObj) {
+    this.create = function (connectObj) {
         con = mysql.createConnection(connectObj);
+        con.connect();
+        // return con;
+        // console.log(con);
+        // while (con.state === "disconnected") {
+        //     con = mysql.createConnection(connectObj);
+        //     console.log(con);
+        // }
     }
 
     this.passToSQL = async function () {
@@ -28,7 +35,7 @@ module.exports = function () {
     }
 
     this.insertStatement = async function(sqlStatement, args) {
-        let r = await con.query(sqlStatement, [args], function (err, results, fields) {
+        con.query(sqlStatement, [args], function (err, results, fields) {
             if (err) {
                 console.log(err.message);
             } else {
@@ -36,7 +43,6 @@ module.exports = function () {
                 return results;
             }
         })
-        return r;
     }
 
     this.updateStatement = function() {
@@ -55,20 +61,20 @@ module.exports = function () {
         data.filter(filterFunction);
     }
 
-    this.execute = async function (sqlStatement) {
+    this.execute = function (sqlStatement) {
         // new Promise((resolve, rej) => {
-            let r = await con.query(sqlStatement, function (err, results, fields) {
+            con.query(sqlStatement, function (err, results, fields) {
                 if (err) {
                     console.log(err.message);
                 } else {
                     console.log("execute results: ");
                     console.log(results);
                     // resolve(results);
-                    return results;
+                    // return results;
                 }
             })
-            return r;
         // })
+        // return r;
     }
 
     this.closeConnection = function() {
