@@ -51,7 +51,7 @@ function onDataReceieved(data) {
 
     vehicle_id = d.trip_update.vehicle != undefined ? d.trip_update.vehicle.id : null;
     
-    return [UUID, stop_time_arrival, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id];
+    return [UUID, arrived, stop_time_arrival, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id];
   })
 
   console.log(flat);

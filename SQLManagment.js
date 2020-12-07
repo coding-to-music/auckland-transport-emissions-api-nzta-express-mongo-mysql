@@ -5,6 +5,7 @@ module.exports = function () {
 
     this.createConnection = function (connectObj) {
         con = mysql.createConnection(connectObj);
+        console.log(con);
     }
 
     this.passToSQL = async function () {
