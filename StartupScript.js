@@ -17,7 +17,6 @@ let createRealtime = `create table if not exists realtime_raw(
     UUID varchar(255) PRIMARY KEY not null,
     arrival BOOLEAN,
     start_id varchar(255),
-    start_time varchar(255),
     stop_time int,
     stop_id varchar(255),
     stop_sequence int,

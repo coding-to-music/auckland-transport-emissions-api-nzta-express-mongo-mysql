@@ -63,6 +63,7 @@ async function onDataReceieved(data) {
   })
 
   let insertStmt = "insert into realtime_raw (UUID, arrival, stop_time, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id) VALUES ? "
+  + "ON DUPLICATE KEY UPDATE `arrival`=VALUES(`arrival`), `stop_time`=VALUES(`stop_time`), `stop_id`=VALUES(`stop_id`), `stop_sequence`=VALUES(`stop_sequence`)"
   // sqlInstance.insertStatement(insertStmt, flat);
   con.query(insertStmt, [flat], function (err, results, fields) {
     console.log(err, results, fields);
@@ -81,7 +82,7 @@ async function onDataReceieved(data) {
         console.log(results);
         // resolve(results);
     }
-  })
+  });
 
   con.end();
 }
