@@ -1,5 +1,5 @@
 /**
- * Script to pull schedule information from the AT API and insert it to the mysql database
+ * Script to pull scheduled information from the AT API, process it, and insert it to the mysql database
  * 
  * Currently set up to filter out the trips carried out by:
  *    - Ritchies (agency_id = RTH)
@@ -9,7 +9,7 @@
  * These are:
  *    - trips
  *    - routes
- *    - 
+ *    - calendar
  */
 
 //IMPORTS
@@ -29,21 +29,31 @@ let key = "b9f2e4f0b5e140b79a698c0bb9298a7f";
 url = '', data = {};
 
 let listOfURLS = ["https://api.at.govt.nz/v2/gtfs/trips", "https://api.at.govt.nz/v2/gtfs/routes", 
-                    "https://api.at.govt.nz/v2/gtfs/calendar", "https://api.at.govt.nz/v2/gtfs/versions"];
+                    "https://api.at.govt.nz/v2/gtfs/calendar", "https://api.at.govt.nz/v2/gtfs/calendarDate"];
 
-/*let promise = new Promise((res, rej) => {
-    getATAPI(listOfURLS[0]).then(data=> {
-        processTripRecords(data);
-    });
-    res();
-});*/
+if (require.main === module) {
+  main();
+}
 
-agencyCheck();
+function main() {
+  // Response Variables
+  var trips, routeInfo, calendar, calendarExceptions;
+  console.log("starting")
+  retrieveData();
+  //filterProcessData();
+  //postData();
+  console.log(trips.response.length);
+}
 
-async function agencyCheck() {
-  let trips = await getATAPI(listOfURLS[0]);
-  let routeInfo = await getATAPI(listOfURLS[1]);
-  let HEcount = 0;
+
+
+async function retrieveData() {
+  trips = await getATAPI(listOfURLS[0]);
+  //routeInfo = await getATAPI(listOfURLS[1]);
+  //calendar = await getATAPI(listOfURLS[2]);
+  //calendarExceptions = await getATAPI(listOfURLS[3]);
+  //console.log(calendarExceptions.response.length);
+  /*let HEcount = 0;
   let RTHcount = 0;
 
   for (let trip of trips.response) {
@@ -53,10 +63,11 @@ async function agencyCheck() {
     if (agency == "HE") { HEcount = HEcount + 1; }
     if (agency == "RTH") { RTHcount = RTHcount + 1; }
   }
+  console.log(trips.response[0]);
+  console.log(routeInfo.response[0]);
+  console.log(HEcount, RTHcount);*/
 
-  console.log(HEcount, RTHcount);
-
-  processTripRecords(trips.response)
+  //processTripRecords(trips.response)
 }
 
   
@@ -77,6 +88,7 @@ async function getATAPI(url) {
     referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
     //body: JSON.stringify(data) // body data type must match "Content-Type" header
   });
+  console.log(response);
   return response.json();  
 }
 
