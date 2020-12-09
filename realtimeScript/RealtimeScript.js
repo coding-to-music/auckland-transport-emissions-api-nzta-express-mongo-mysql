@@ -1,27 +1,18 @@
 //IMPORTS
-const fetch = require('node-fetch');
-let sqlManager = require('./SQLManagment.js');
-let sqlInstance = new sqlManager();
-let mysql = require("mysql");
-
-let connectionObject = {
-  host: "johnny.heliohost.org",
-  user: "chriswil_1",
-  password: "w5eiDgh@39GNmtA",
-  database: "chriswil_ate_model"
-}
+const fetch = require('../node_modules/node-fetch');
+let mysql = require("../node_modules/mysql");
+let SQLManagment = require("../SQLManagment");
+let pool = new SQLManagment();
 
 let key = "b9f2e4f0b5e140b79a698c0bb9298a7f";
 url = '', data = {};
 
-let listOfURLS = ["https://api.at.govt.nz/v2/gtfs/trips", "https://api.at.govt.nz/v2/gtfs/routes", "https://api.at.govt.nz/v2/gtfs/calendar", "https://api.at.govt.nz/v2/gtfs/versions", ""];
-
-// let promise = new Promise((res, rej) => {
-  callTripUpdates().then(data=> {
-    onDataReceieved(data);
-  });
-  // res();
-// });
+setInterval(() => callTripUpdates().then(data=> {
+  onDataReceieved(data);
+}), 30000);
+// callTripUpdates().then(data=> {
+  // onDataReceieved(data);
+// })
 
 async function onDataReceieved(data) {
   let flat = data.response.entity.map(d => {
@@ -38,7 +29,7 @@ async function onDataReceieved(data) {
     }
     
     direction_id = d.trip_update.trip.direction_id;
-    route_id = d.trip_update.route_id;
+    route_id = d.trip_update.trip.route_id;
     date = d.trip_update.trip.start_date;
     start_time = d.trip_update.trip.start_time;
     trip_id = d.trip_update.trip.trip_id;
@@ -48,43 +39,19 @@ async function onDataReceieved(data) {
     return [UUID, arrived, stop_time_arrival, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id];
   })
 
-  //Create connection and insert all data
-  // sqlInstance.create(connectionObject);
-  // await mysql.createConnection(connectionObject);
-  // c.connect();
-  // console.log(c);
-
-  con = mysql.createConnection(connectionObject);
-  con.connect();
-
-  con.query("DESCRIBE realtime_raw;", function(err, results, fields) {
-    if (err) console.log(err);
-    else console.log(results);
-  })
-
   let insertStmt = "insert into realtime_raw (UUID, arrival, stop_time, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id) VALUES ? "
-  + "ON DUPLICATE KEY UPDATE `arrival`=VALUES(`arrival`), `stop_time`=VALUES(`stop_time`), `stop_id`=VALUES(`stop_id`), `stop_sequence`=VALUES(`stop_sequence`)"
-  // sqlInstance.insertStatement(insertStmt, flat);
-  con.query(insertStmt, [flat], function (err, results, fields) {
-    console.log(err, results, fields);
-    if (err) throw err
-    else {
-        console.log("Row inserted: " + results.affectedRows);
-        console.log(results);
-    }
+  + "ON DUPLICATE KEY UPDATE `arrival`=VALUES(`arrival`), `stop_time`=VALUES(`stop_time`), `stop_id`=VALUES(`stop_id`), `stop_sequence`=VALUES(`stop_sequence`)";
+  let p = new Promise((res,rej) => {
+    pool.executeQuery(insertStmt, flat, function (err, data) {
+      console.log(data);
+      res(data);
+    })
+  }).then((data) => {
+    pool.executeQuery("insert into info (time, ok) VALUES ? ", [[[Date.now(), JSON.stringify(data)]]], function(err, res) {
+      if (err) throw err;
+      console.log(res);
+    });
   })
-
-  con.query("SELECT * FROM realtime_raw;", function (err, results, fields) {
-    if (err) {
-        console.log(err.message);
-    } else {
-        console.log("execute results: ");
-        console.log(results);
-        // resolve(results);
-    }
-  });
-
-  con.end();
 }
 
 async function callTripUpdates() {

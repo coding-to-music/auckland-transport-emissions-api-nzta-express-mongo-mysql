@@ -1,18 +1,43 @@
+// let pool = require("../DB");
 let mysql = require("mysql");
+
 module.exports = function () {
-    let con;
+    this.pool = mysql.createPool({
+        connectionLimit: 40,
+        host: "johnny.heliohost.org",
+        user: "chriswil_1",
+        password: "w5eiDgh@39GNmtA",
+        database: "chriswil_ate_model"
+      });
     this.data;
 
-    this.create = function (connectObj) {
-        con = mysql.createConnection(connectObj);
-        con.connect();
-        // return con;
-        // console.log(con);
-        // while (con.state === "disconnected") {
-        //     con = mysql.createConnection(connectObj);
-        //     console.log(con);
-        // }
+    this.executeQuery=function(query,args,callback){
+        this.pool.getConnection(function(err,connection){
+            if (err) {
+              connection.release();
+              throw err;
+            }   
+            connection.query(query,[args],function(err,rows){
+                connection.release();
+                if(!err) {
+                    callback(null, {rows: rows});
+                }           
+            });
+            connection.on('error', function(err) {      
+                  throw err; 
+            });
+        });
     }
+    // this.create = function (connectObj) {
+    //     con = mysql.createConnection(connectObj);
+    //     con.connect();
+    //     // return con;
+    //     // console.log(con);
+    //     // while (con.state === "disconnected") {
+    //     //     con = mysql.createConnection(connectObj);
+    //     //     console.log(con);
+    //     // }
+    // }
 
     this.passToSQL = async function () {
 
@@ -63,7 +88,7 @@ module.exports = function () {
 
     this.execute = function (sqlStatement) {
         // new Promise((resolve, rej) => {
-            con.query(sqlStatement, function (err, results, fields) {
+            pool.query(sqlStatement, function (err, results, fields) {
                 if (err) {
                     console.log(err.message);
                 } else {

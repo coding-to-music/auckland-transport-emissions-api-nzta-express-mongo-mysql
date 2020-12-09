@@ -48,11 +48,25 @@ async function setupDB() {
   // sqlInstance.closeConnection();
   con = mysql.createConnection(connectionObject);
   con.connect();
-  con.query("DESCRIBE realtime_raw;", function(err, results, fields) {
-    if (err) console.log(err);
-    else console.log(results);
-  })
-  var y = sqlInstance.execute("SHOW TABLES;");
+  // con.query("DESCRIBE realtime_raw;", function(err, results, fields) {
+    // if (err) console.log(err);
+    // else console.log(results);
+  // })
+  // var y = sqlInstance.execute("SHOW TABLES;");
   // console.log(t, x, y);
-  sqlInstance.closeConnection();
+  con.query("DROP TABLE info;", function(err, results, fields) {
+    console.log(results);
+  });
+  con.query("CREATE TABLE info(iid int PRIMARY KEY not null AUTO_INCREMENT, time timestamp, ok JSON);", function (err, results, fields) {
+    console.log(err, results, fields);
+    if (err) throw err
+    else {
+        console.log("Row inserted: " + results.affectedRows);
+        console.log(results);
+    }
+  })
+
+
+
+  con.end();
 }
