@@ -18,6 +18,46 @@ con.query("SHOW TABLES;", function (err, results, fields) {
         console.log(results);
 }});
 
+// con.query("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'routes' ORDER BY ORDINAL_POSITION", function (err, results, fields) {
+//     if (err) {
+//         console.log(err.message);
+//     } else {
+//         console.log("execute results: ");
+//         console.log(results);
+// }});
+
+// con.query("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'schedule_trips' ORDER BY ORDINAL_POSITION", function (err, results, fields) {
+//     if (err) {
+//         console.log(err.message);
+//     } else {
+//         console.log("execute results: ");
+//         console.log(results);
+// }});
+
+// con.query("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'services' ORDER BY ORDINAL_POSITION", function (err, results, fields) {
+//     if (err) {
+//         console.log(err.message);
+//     } else {
+//         console.log("execute results: ");
+//         console.log(results);
+// }});
+
+// con.query("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'shapes' ORDER BY ORDINAL_POSITION", function (err, results, fields) {
+//     if (err) {
+//         console.log(err.message);
+//     } else {
+//         console.log("execute results: ");
+//         console.log(results);
+// }});
+
+con.query("SELECT * FROM info", function (err, results, fields) {
+    if (err) {
+        console.log(err.message);
+    } else {
+        console.log("execute results: ");
+        console.log(results);
+}});
+
 con.end(function (err) {
     if (err) {
         return console.log(err.message);
