@@ -50,7 +50,7 @@ con.query("SHOW TABLES;", function (err, results, fields) {
 //         console.log(results);
 // }});
 
-con.query("SELECT * FROM info", function (err, results, fields) {
+con.query("SELECT * FROM schedule_trips LIMIT 1", function (err, results, fields) {
     if (err) {
         console.log(err.message);
     } else {
