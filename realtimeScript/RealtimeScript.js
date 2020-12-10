@@ -39,19 +39,27 @@ async function onDataReceieved(data) {
     return [UUID, arrived, stop_time_arrival, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id];
   })
 
+  for (let i = 0; i < flat.length; i++ ) {
+    console.log(flat[i][2]);
+  }
+
+  //UNDEFINED = BAD
   let insertStmt = "insert into realtime_raw (UUID, arrival, stop_time, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id) VALUES ? "
   + "ON DUPLICATE KEY UPDATE `arrival`=VALUES(`arrival`), `stop_time`=VALUES(`stop_time`), `stop_id`=VALUES(`stop_id`), `stop_sequence`=VALUES(`stop_sequence`)";
-  let p = new Promise((res,rej) => {
-    pool.executeQuery(insertStmt, flat, function (err, data) {
-      console.log(data);
-      res(data);
-    })
-  }).then((data) => {
-    pool.executeQuery("insert into info (time, ok) VALUES ? ", [[[Date.now(), JSON.stringify(data)]]], function(err, res) {
-      if (err) throw err;
-      console.log(res);
-    });
-  })
+  // let p = new Promise((res,rej) => {
+  //   pool.executeQuery(insertStmt, flat, function (err, data) {
+  //     if (err) throw err;
+  //     console.log(data);
+  //     res(data);
+  //   })
+  // })
+  // .then((data) => {
+  //   pool.executeQuery("insert into info (time, ok) VALUES ? ", [[[Date.now(), JSON.stringify(data)]]], function(err, res) {
+  //     if (err) throw err;
+  //     console.log(res);
+  //     console.log("ok");
+  //   });
+  // })
 }
 
 async function callTripUpdates() {

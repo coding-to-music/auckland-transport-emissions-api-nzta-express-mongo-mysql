@@ -3,7 +3,7 @@ let mysql = require("mysql");
 
 module.exports = function () {
     this.pool = mysql.createPool({
-        connectionLimit: 40,
+        connectionLimit: 49,
         host: "johnny.heliohost.org",
         user: "chriswil_1",
         password: "w5eiDgh@39GNmtA",
@@ -11,33 +11,26 @@ module.exports = function () {
       });
     this.data;
 
-    this.executeQuery=function(query,args,callback){
-        this.pool.getConnection(function(err,connection){
+    this.getConnection = function(callback) {
+        this.pool.getConnection(function(err, connection) {
             if (err) {
-              connection.release();
-              throw err;
-            }   
-            connection.query(query,[args],function(err,rows){
-                connection.release();
-                if(!err) {
-                    callback(null, {rows: rows});
-                }           
-            });
-            connection.on('error', function(err) {      
-                  throw err; 
-            });
+                // console.log(chalk.bgYellow.bold('Warning:') + ' Cannot connect to the MySQL server. Error Code: ' + error.code);
+                throw err;
+            } else {
+                console.log(connection);
+                // console.log(chalk.bgYellow.bold('Warning:') + ' Cannot connect to the MySQL server. Error Code: ' + error.code);
+                return connection;
+            }
         });
+    };
+
+    this.executeQuery=function(query,args,callback){
+        this.pool.query(query, args, function (err, results) {
+              if (err) throw err;
+              console.log(results);
+              callback(null, results);
+            });
     }
-    // this.create = function (connectObj) {
-    //     con = mysql.createConnection(connectObj);
-    //     con.connect();
-    //     // return con;
-    //     // console.log(con);
-    //     // while (con.state === "disconnected") {
-    //     //     con = mysql.createConnection(connectObj);
-    //     //     console.log(con);
-    //     // }
-    // }
 
     this.passToSQL = async function () {
 
