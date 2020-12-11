@@ -49,7 +49,7 @@ async function main() {
   // retrieveData
   trips = await getATAPI(listOfURLS[0]);
   routeInfo = await getATAPI(listOfURLS[1]);
-  // calendar = await getATAPI(listOfURLS[2]);
+  calendar = await getATAPI(listOfURLS[2]);
   calendarExceptions = await getATAPI(listOfURLS[3]);
 
   // console.log(trips.response[0]);
@@ -86,32 +86,32 @@ async function main() {
   // sqlInsert = "insert into services (service_id, mon, tue, wed, thu, fri, sat, sun, date_start, date_end, date_exceptions) VALUES ? ";
   // postSQLData(sqlInsert, calendarInsert);
 
-  let dataStr = "";
+  // let dataStr = "";
 
-  for (let i = 0; i < exceptionsInsert[0].length; i++) {
-    dataStr += "('"+exceptionsInsert[0][i]+ "', '" +JSON.stringify(exceptionsInsert[1][i]) + "'), "
-  }
+  // for (let i = 0; i < exceptionsInsert[0].length; i++) {
+  //   dataStr += "('"+exceptionsInsert[0][i]+ "', '" +JSON.stringify(exceptionsInsert[1][i]) + "'), "
+  // }
 
-  console.log(dataStr.slice(0,250));
+  // console.log(dataStr.slice(0,250));
 
-  let sqlInsert = "INSERT INTO services (service_id, date_exceptions) VALUES " +
-                    dataStr.slice(0, dataStr.length-2) +
-                    " ON DUPLICATE KEY UPDATE `date_exceptions` = VALUES(`date_exceptions`)";
+  // let sqlString = "INSERT INTO services (service_id, date_exceptions) VALUES " +
+  //                   dataStr.slice(0, dataStr.length-2) +
+  //                   " ON DUPLICATE KEY UPDATE `date_exceptions` = VALUES(`date_exceptions`)";
 
-  //console.log(sqlInsert);
+  //console.log(sqlString);
 
   let doubleCheck = "SELECT * FROM `services` WHERE `service_id` = '1085195742-20201205123725_v95.82'";
 
   let con = mysql.createConnection(connectionObject);
   con.connect();
 
-  con.query(sqlInsert, function (err, results, fields) {
-    if (err) {
-        console.log(err.message);
-    } else {
-        console.log("execute results: ");
-        console.log(results);
-  }});
+  // con.query(sqlString, function (err, results, fields) {
+  //   if (err) {
+  //       console.log(err.message);
+  //   } else {
+  //       console.log("execute results: ");
+  //       console.log(results);
+  // }});
 
   con.query(doubleCheck, function (err, results, fields) {
     if (err) {

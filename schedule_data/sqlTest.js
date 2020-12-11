@@ -7,6 +7,8 @@ let connectionObject = {
     database: "chriswil_ate_model"
   }
 
+var temp;
+
 let con = mysql.createConnection(connectionObject);
 con.connect();
 
@@ -50,7 +52,7 @@ con.query("SHOW TABLES;", function (err, results, fields) {
 //         console.log(results);
 // }});
 
-con.query("SELECT * FROM schedule_trips LIMIT 1", function (err, results, fields) {
+con.query("SELECT * FROM schedule_trips WHERE trip_id = '1102170548-20201126121446_v95.73'", function (err, results, fields) {
     if (err) {
         console.log(err.message);
     } else {
