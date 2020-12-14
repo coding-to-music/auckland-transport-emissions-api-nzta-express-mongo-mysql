@@ -13,10 +13,10 @@ let sqlInstance = new sqlManager();
 let mysql = require("mysql");
 
 let connectionObject = {
-  host: "johnny.heliohost.org",
-  user: "chriswil_1",
-  password: "w5eiDgh@39GNmtA",
-  database: "chriswil_ate_model"
+  host: "localhost",
+  user: "root",
+  password: "busemissions123",
+  database: "localate"
 }
 
 let key = "99edd1e8c5504dfc955a55aa72c2dbac";
@@ -43,7 +43,7 @@ async function main() {
 
   console.log(trip_ids.length);
   // Loop commented out for now, the posts to the SQL db are inconsistent
-  // for (let i = 0; i < trip_ids.length; i++) {
+  for (let i = 0; i < 100; i++) {
     if (i%50 == 0) {console.log("Count: " + i);}
     let id = trip_ids[i];
 
@@ -52,7 +52,7 @@ async function main() {
 
     shapeFileSQL = formatShapeSQL(shape);
 
-    postSQLData(shapeFileSQL);
+    await postSQLData(shapeFileSQL);
 
     let distance = calcShapeDist(shape);
 
@@ -61,8 +61,9 @@ async function main() {
     let insertStatement = "INSERT INTO schedule_trips (trip_id, shape_id, distance) VALUES (?) " + 
                             "ON DUPLICATE KEY UPDATE `shape_id` = VALUES(`shape_id`), `distance` = VALUES(`distance`);";
 
-    postSQLData(insertStatement, [id, shape[0].shape_id, distance]);
-  // }
+    await postSQLData(insertStatement, [id, shape[0].shape_id, distance]);
+  }
+
   // let doubleCheck = "SELECT * FROM `shapes` WHERE `shape_id` = '" + shape[0].shape_id + "'";
 
   // let con = mysql.createConnection(connectionObject);
@@ -81,8 +82,6 @@ async function main() {
   //       return console.log(err.message);
   //   }
   // });
-
-
 }
 
 
@@ -119,24 +118,32 @@ function calcShapeDist(shape) {
 
 function postSQLData(insertStmt, data = null) {
   let con = mysql.createConnection(connectionObject);
-  con.connect();
+  return new Promise( function (resolve) {
+    con.connect();
 
-  
+    con.query(insertStmt, [data], function (err, results, fields) {
+      if (err) {
+          console.log(err.message);
+          con.end(errFunc);
+          setTimeout(() => {
+            console.log('resending query');
+            postSQLData(insertStmt, data).then( resolve );
+          }, 500);
+      } else {
+          console.log("Row inserted: " + results.affectedRows);
+          console.log(results);
+          con.end(errFunc);
+          resolve();
+      }
+    });
 
-  con.query(insertStmt, [data], function (err, results, fields) {
-    if (err) {
-        console.log(err.message);
-    } else {
-        console.log("Row inserted: " + results.affectedRows);
-        console.log(results);
-    }
   })
+}
 
-  con.end(function (err) {
-    if (err) {
-        return console.log(err.message);
-    }
-  });
+function errFunc (err) {
+  if (err) {
+    console.log(err.message);
+  }
 }
 
 

@@ -19,10 +19,10 @@ let sqlInstance = new sqlManager();
 let mysql = require("../node_modules/mysql");
 
 let connectionObject = {
-  host: "johnny.heliohost.org",
-  user: "chriswil_1",
-  password: "w5eiDgh@39GNmtA",
-  database: "chriswil_ate_model"
+  host: "localhost",
+  user: "root",
+  password: "busemissions123",
+  database: "localate"
 }
 
 let key = "99edd1e8c5504dfc955a55aa72c2dbac";
@@ -63,55 +63,59 @@ async function main() {
   let filteredRouteIDs = routeInfo.map( route => route.route_id );
   trips = trips.response.filter( trip => filteredRouteIDs.includes(trip.route_id) );
   let filteredServiceIDs = trips.map( trip => trip.service_id );
-  // calendar = calendar.response.filter( service => filteredServiceIDs.includes(service.service_id) );
+  calendar = calendar.response.filter( service => filteredServiceIDs.includes(service.service_id) );
   calendarExceptions = calendarExceptions.response.filter( service => filteredServiceIDs.includes(service.service_id) ); 
 
   // Process into valid form
 
-  // let routeInsert = flattenRoute(routeInfo);
-  // let tripInsert = flattenTrips(trips);
-  // let calendarInsert = flattenCalendar(calendar);
+  let routeInsert = flattenRoute(routeInfo);
+  let shapeInsert = trips.map( trip => trip.shape_id );
+  let tripInsert = flattenTrips(trips);
+  let calendarInsert = flattenCalendar(calendar);
   let exceptionsInsert = flattenExceptions(calendarExceptions);
 
   
 
   // Post to mySql
 
-  // let sqlInsert = "insert into routes (route_id, agency_id, route_short_name, route_long_name) VALUES ? ";
-  // postSQLData(sqlInsert, routeInsert);
+  let sqlInsert = "insert into routes (route_id, agency_id, route_short_name, route_long_name) VALUES ? ";
+  postSQLData(sqlInsert, routeInsert);
 
-  // sqlInsert = "insert into schedule_trips (trip_id, route_id, shape_id, service_id, schedule_start_stop_id, schedule_end_stop_id, schedule_number_stops, schedule_time, distance) VALUES ? ";
-  // postSQLData(sqlInsert, tripInsert);
+  sqlInsert = "insert into shapes (shape_id) VALUES ? ";
+  postSQLData(sqlInsert, routeInsert);
 
-  // sqlInsert = "insert into services (service_id, mon, tue, wed, thu, fri, sat, sun, date_start, date_end, date_exceptions) VALUES ? ";
-  // postSQLData(sqlInsert, calendarInsert);
+  sqlInsert = "insert into schedule_trips (trip_id, route_id, shape_id, service_id, schedule_start_stop_id, schedule_end_stop_id, schedule_number_stops, schedule_time, distance) VALUES ? ";
+  postSQLData(sqlInsert, tripInsert);
 
-  // let dataStr = "";
+  sqlInsert = "insert into services (service_id, mon, tue, wed, thu, fri, sat, sun, date_start, date_end, date_exceptions) VALUES ? ";
+  postSQLData(sqlInsert, calendarInsert);
 
-  // for (let i = 0; i < exceptionsInsert[0].length; i++) {
-  //   dataStr += "('"+exceptionsInsert[0][i]+ "', '" +JSON.stringify(exceptionsInsert[1][i]) + "'), "
-  // }
+  let dataStr = "";
 
-  // console.log(dataStr.slice(0,250));
+  for (let i = 0; i < exceptionsInsert[0].length; i++) {
+    dataStr += "('"+exceptionsInsert[0][i]+ "', '" +JSON.stringify(exceptionsInsert[1][i]) + "'), "
+  }
 
-  // let sqlString = "INSERT INTO services (service_id, date_exceptions) VALUES " +
-  //                   dataStr.slice(0, dataStr.length-2) +
-  //                   " ON DUPLICATE KEY UPDATE `date_exceptions` = VALUES(`date_exceptions`)";
+  console.log(dataStr.slice(0,250));
 
-  //console.log(sqlString);
+  let sqlString = "INSERT INTO services (service_id, date_exceptions) VALUES " +
+                    dataStr.slice(0, dataStr.length-2) +
+                    " ON DUPLICATE KEY UPDATE `date_exceptions` = VALUES(`date_exceptions`)";
+
+  console.log(sqlString);
 
   let doubleCheck = "SELECT * FROM `services` WHERE `service_id` = '1085195742-20201205123725_v95.82'";
 
   let con = mysql.createConnection(connectionObject);
   con.connect();
 
-  // con.query(sqlString, function (err, results, fields) {
-  //   if (err) {
-  //       console.log(err.message);
-  //   } else {
-  //       console.log("execute results: ");
-  //       console.log(results);
-  // }});
+  con.query(sqlString, function (err, results, fields) {
+    if (err) {
+        console.log(err.message);
+    } else {
+        console.log("execute results: ");
+        console.log(results);
+  }});
 
   con.query(doubleCheck, function (err, results, fields) {
     if (err) {
@@ -153,7 +157,7 @@ function flattenTrips(scheduledTrips) {
 
     trip_id = trip.trip_id;
     route_id = trip.route_id;
-    shape_id = null;
+    shape_id = trip.shape_id;
     service_id = trip.service_id;
     start_stop = null;
     end_stop = null;

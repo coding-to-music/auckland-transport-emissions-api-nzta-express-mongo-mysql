@@ -2,10 +2,10 @@
 let mysql = require("../node_modules/mysql");
 
 let connectionObject = {
-    host: "johnny.heliohost.org",
-    user: "chriswil_1",
-    password: "w5eiDgh@39GNmtA",
-    database: "chriswil_ate_model"
+    host: "localhost",
+    user: "root",
+    password: "busemissions123",
+    database: "localate"
   }
 
 // Queries

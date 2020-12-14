@@ -1,10 +1,10 @@
 let mysql = require("../node_modules/mysql");
 
 let connectionObject = {
-    host: "johnny.heliohost.org",
-    user: "chriswil_1",
-    password: "w5eiDgh@39GNmtA",
-    database: "chriswil_ate_model"
+    host: "localhost",
+    user: "root",
+    password: "busemissions123",
+    database: "localate"
   }
 
 var temp;
@@ -52,13 +52,13 @@ con.query("SHOW TABLES;", function (err, results, fields) {
 //         console.log(results);
 // }});
 
-con.query("SELECT * FROM schedule_trips WHERE trip_id = '1102170548-20201126121446_v95.73'", function (err, results, fields) {
-    if (err) {
-        console.log(err.message);
-    } else {
-        console.log("execute results: ");
-        console.log(results);
-}});
+// con.query("SELECT * FROM schedule_trips WHERE trip_id = '1102170548-20201126121446_v95.73'", function (err, results, fields) {
+//     if (err) {
+//         console.log(err.message);
+//     } else {
+//         console.log("execute results: ");
+//         console.log(results);
+// }});
 
 con.end(function (err) {
     if (err) {
