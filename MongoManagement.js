@@ -1,5 +1,14 @@
 // let pool = require("../DB");
-let mysql = require("mysql");
+// const MongoClient = require("mongodb").MongoClient;
+// const assert = require("assert");
+
+// //Connection URL
+// const url = "mongodb://localhost27017";
+
+// //"mongodb+srv://chris:<password>@cluster0.l7ehu.mongodb.net/<dbname>?retryWrites=true&w=majority"
+
+// //DB Name
+// const dbName = "ate_model";
 
 module.exports = function (conObj) {
     this.pool = conObj ? mysql.createPool(conObj) : mysql.createPool({

@@ -7,14 +7,19 @@ let pool = new SQLManagment();
 let key = "b9f2e4f0b5e140b79a698c0bb9298a7f";
 url = '', data = {};
 
-setInterval(() => callTripUpdates().then(data=> {
-  onDataReceieved(data);
-}), 30000);
+// module.exports = function() {
+  console.log("startin that biii");
+  setInterval(() => callTripUpdates().then(data=> {
+    onDataReceieved(data);
+  }), 30000);
+// }
 // callTripUpdates().then(data=> {
   // onDataReceieved(data);
 // })
 
 async function onDataReceieved(data) {
+  console.log(data.response.entity);
+
   let flat = data.response.entity.map(d => {
     let UUID, stop_time_arrival, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id;
     UUID = d.trip_update.trip.start_date + "-" + d.trip_update.trip.trip_id;
@@ -36,16 +41,46 @@ async function onDataReceieved(data) {
 
     vehicle_id = d.trip_update.vehicle != undefined ? d.trip_update.vehicle.id : null;
     
-    return [UUID, arrived, stop_time_arrival, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id];
+    return {
+      "UUID" : UUID, 
+      "arrived?" : arrived, 
+      "stop_time_arrival" : stop_time_arrival,
+      "stop_id" : stop_id, 
+      "stop_sequence" : stop_sequence, 
+      "direction_id" : direction_id, 
+      "route_id" : route_id, 
+      "date" : date, 
+      "start_time" : start_time, 
+      "trip_id" : trip_id, 
+      "vehicle_id" : vehicle_id
+    };
   })
 
-  for (let i = 0; i < flat.length; i++ ) {
-    console.log(flat[i][2]);
-  }
+  console.log(flat);
+
+  const MongoClient = require('mongodb').MongoClient;
+  const uri = "mongodb+srv://chris:YFwh2XjNZ2XY8cv9@cluster0.l7ehu.mongodb.net/ate_model?retryWrites=true&w=majority";
+  const client = new MongoClient(uri, { useUnifiedTopology: true });
+  client.connect((err, db) => {
+    console.log(db);
+    // const collection = client.db("ate_model").collection("realtime_raw");
+    
+    let dbo = db.db("ate_model");
+    const options = {"upsert" : true};
+
+    console.log(dbo);
+  
+    dbo.collection("realtime_raw").updateMany(flat, function(err, res) {
+      if (err) console.log(err);
+      console.log("Number of documents inserted: " + res.insertedCount);
+      db.close();
+    }, options);
+  });
+
 
   //UNDEFINED = BAD
-  let insertStmt = "insert into realtime_raw (UUID, arrival, stop_time, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id) VALUES ? "
-  + "ON DUPLICATE KEY UPDATE `arrival`=VALUES(`arrival`), `stop_time`=VALUES(`stop_time`), `stop_id`=VALUES(`stop_id`), `stop_sequence`=VALUES(`stop_sequence`)";
+  // let insertStmt = "insert into realtime_raw (UUID, arrival, stop_time, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id) VALUES ? "
+  // + "ON DUPLICATE KEY UPDATE `arrival`=VALUES(`arrival`), `stop_time`=VALUES(`stop_time`), `stop_id`=VALUES(`stop_id`), `stop_sequence`=VALUES(`stop_sequence`)";
   // let p = new Promise((res,rej) => {
   //   pool.executeQuery(insertStmt, flat, function (err, data) {
   //     if (err) throw err;
@@ -63,6 +98,8 @@ async function onDataReceieved(data) {
 }
 
 async function callTripUpdates() {
+  let joshURI = "";
+  let joshesKey = "99edd1e8c5504dfc955a55aa72c2dbac";
   const response = await fetch("https://api.at.govt.nz/v2/public/realtime/tripupdates?", {
     method: 'GET', // *GET, POST, PUT, DELETE, etc.
     mode: 'cors', // no-cors, *cors, same-origin
@@ -70,7 +107,7 @@ async function callTripUpdates() {
     credentials: 'same-origin', // include, *same-origin, omit
     headers: {
       'Content-Type': 'application/json',
-      "Ocp-Apim-Subscription-Key": key
+      "Ocp-Apim-Subscription-Key": joshesKey
       // 'Content-Type': 'application/x-www-form-urlencoded',
     },
     redirect: 'follow', // manual, *follow, error
