@@ -1,0 +1,328 @@
+2020-12-14T22:50:29.587Z
+	Error : null
+***************Update results*************
+
+BulkWriteResult {
+  result: {
+    ok: 1,
+    writeErrors: [],
+    writeConcernErrors: [],
+    insertedIds: [],
+    nInserted: 0,
+    nUpserted: 7,
+    nMatched: 2850,
+    nModified: 216,
+    nRemoved: 0,
+    upserted: [
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object]
+    ],
+    lastOp: { ts: [Timestamp], t: 3 }
+  }
+}
+the options [servers] is not supported
+the options [caseTranslate] is not supported
+the options [dbName] is not supported
+the options [srvHost] is not supported
+the options [credentials] is not supported
+2020-12-14T22:50:56.568Z
+	Error : MongoError: Topology is closed, please connect
+***************Update results*************
+
+null
+the options [servers] is not supported
+the options [caseTranslate] is not supported
+the options [dbName] is not supported
+the options [srvHost] is not supported
+the options [credentials] is not supported
+the options [username] is not supported
+the server/replset/mongos/db options are deprecated, all their options are supported at the top level of the options object [poolSize,ssl,sslValidate,sslCA,sslCert,sslKey,sslPass,sslCRL,autoReconnect,noDelay,keepAlive,keepAliveInitialDelay,connectTimeoutMS,family,socketTimeoutMS,reconnectTries,reconnectInterval,ha,haInterval,replicaSet,secondaryAcceptableLatencyMS,acceptableLatencyMS,connectWithNoPrimary,authSource,w,wtimeout,j,forceServerObjectId,serializeFunctions,ignoreUndefined,raw,bufferMaxEntries,readPreference,pkFactory,promiseLibrary,readConcern,maxStalenessSeconds,loggerLevel,logger,promoteValues,promoteBuffers,promoteLongs,domainsEnabled,checkServerIdentity,validateOptions,appname,auth,user,password,authMechanism,compression,fsync,readPreferenceTags,numberOfRetries,auto_reconnect,minSize,monitorCommands,retryWrites,retryReads,useNewUrlParser,useUnifiedTopology,serverSelectionTimeoutMS,useRecoveryToken,autoEncryption,driverInfo,tls,tlsInsecure,tlsinsecure,tlsAllowInvalidCertificates,tlsAllowInvalidHostnames,tlsCAFile,tlsCertificateFile,tlsCertificateKeyFile,tlsCertificateKeyFilePassword,minHeartbeatFrequencyMS,heartbeatFrequencyMS,directConnection,appName,maxPoolSize,minPoolSize,maxIdleTimeMS,waitQueueTimeoutMS]
+the options [mode] is not supported
+the options [tags] is not supported
+the options [hedge] is not supported
+the options [preference] is not supported
+the options [isValid] is not supported
+the options [slaveOk] is not supported
+the options [equals] is not supported
+the options [toJSON] is not supported
+the options [source] is not supported
+the options [mechanism] is not supported
+2020-12-14T22:51:26.168Z
+	Error : MongoError: Topology is closed, please connect
+***************Update results*************
+
+null
+the options [0] is not supported
+the options [1] is not supported
+the options [2] is not supported
+the options [3] is not supported
+the options [4] is not supported
+the options [servers] is not supported
+the options [caseTranslate] is not supported
+the options [dbName] is not supported
+the options [srvHost] is not supported
+the options [credentials] is not supported
+the options [username] is not supported
+the server/replset/mongos/db options are deprecated, all their options are supported at the top level of the options object [poolSize,ssl,sslValidate,sslCA,sslCert,sslKey,sslPass,sslCRL,autoReconnect,noDelay,keepAlive,keepAliveInitialDelay,connectTimeoutMS,family,socketTimeoutMS,reconnectTries,reconnectInterval,ha,haInterval,replicaSet,secondaryAcceptableLatencyMS,acceptableLatencyMS,connectWithNoPrimary,authSource,w,wtimeout,j,forceServerObjectId,serializeFunctions,ignoreUndefined,raw,bufferMaxEntries,readPreference,pkFactory,promiseLibrary,readConcern,maxStalenessSeconds,loggerLevel,logger,promoteValues,promoteBuffers,promoteLongs,domainsEnabled,checkServerIdentity,validateOptions,appname,auth,user,password,authMechanism,compression,fsync,readPreferenceTags,numberOfRetries,auto_reconnect,minSize,monitorCommands,retryWrites,retryReads,useNewUrlParser,useUnifiedTopology,serverSelectionTimeoutMS,useRecoveryToken,autoEncryption,driverInfo,tls,tlsInsecure,tlsinsecure,tlsAllowInvalidCertificates,tlsAllowInvalidHostnames,tlsCAFile,tlsCertificateFile,tlsCertificateKeyFile,tlsCertificateKeyFilePassword,minHeartbeatFrequencyMS,heartbeatFrequencyMS,directConnection,appName,maxPoolSize,minPoolSize,maxIdleTimeMS,waitQueueTimeoutMS]
+the options [mode] is not supported
+the options [tags] is not supported
+the options [hedge] is not supported
+the options [preference] is not supported
+the options [isValid] is not supported
+the options [slaveOk] is not supported
+the options [equals] is not supported
+the options [toJSON] is not supported
+the options [source] is not supported
+the options [mechanism] is not supported
+2020-12-14T22:51:56.217Z
+	Error : MongoError: Topology is closed, please connect
+***************Update results*************
+
+null
+the options [0] is not supported
+the options [1] is not supported
+the options [2] is not supported
+the options [3] is not supported
+the options [4] is not supported
+the options [servers] is not supported
+the options [caseTranslate] is not supported
+the options [dbName] is not supported
+the options [srvHost] is not supported
+the options [credentials] is not supported
+the options [username] is not supported
+the server/replset/mongos/db options are deprecated, all their options are supported at the top level of the options object [poolSize,ssl,sslValidate,sslCA,sslCert,sslKey,sslPass,sslCRL,autoReconnect,noDelay,keepAlive,keepAliveInitialDelay,connectTimeoutMS,family,socketTimeoutMS,reconnectTries,reconnectInterval,ha,haInterval,replicaSet,secondaryAcceptableLatencyMS,acceptableLatencyMS,connectWithNoPrimary,authSource,w,wtimeout,j,forceServerObjectId,serializeFunctions,ignoreUndefined,raw,bufferMaxEntries,readPreference,pkFactory,promiseLibrary,readConcern,maxStalenessSeconds,loggerLevel,logger,promoteValues,promoteBuffers,promoteLongs,domainsEnabled,checkServerIdentity,validateOptions,appname,auth,user,password,authMechanism,compression,fsync,readPreferenceTags,numberOfRetries,auto_reconnect,minSize,monitorCommands,retryWrites,retryReads,useNewUrlParser,useUnifiedTopology,serverSelectionTimeoutMS,useRecoveryToken,autoEncryption,driverInfo,tls,tlsInsecure,tlsinsecure,tlsAllowInvalidCertificates,tlsAllowInvalidHostnames,tlsCAFile,tlsCertificateFile,tlsCertificateKeyFile,tlsCertificateKeyFilePassword,minHeartbeatFrequencyMS,heartbeatFrequencyMS,directConnection,appName,maxPoolSize,minPoolSize,maxIdleTimeMS,waitQueueTimeoutMS]
+the options [mode] is not supported
+the options [tags] is not supported
+the options [hedge] is not supported
+the options [preference] is not supported
+the options [isValid] is not supported
+the options [slaveOk] is not supported
+the options [equals] is not supported
+the options [toJSON] is not supported
+the options [source] is not supported
+the options [mechanism] is not supported
+2020-12-14T22:52:26.211Z
+	Error : MongoError: Topology is closed, please connect
+***************Update results*************
+
+null
+the options [0] is not supported
+the options [1] is not supported
+the options [2] is not supported
+the options [3] is not supported
+the options [4] is not supported
+the options [servers] is not supported
+the options [caseTranslate] is not supported
+the options [dbName] is not supported
+the options [srvHost] is not supported
+the options [credentials] is not supported
+the options [username] is not supported
+the server/replset/mongos/db options are deprecated, all their options are supported at the top level of the options object [poolSize,ssl,sslValidate,sslCA,sslCert,sslKey,sslPass,sslCRL,autoReconnect,noDelay,keepAlive,keepAliveInitialDelay,connectTimeoutMS,family,socketTimeoutMS,reconnectTries,reconnectInterval,ha,haInterval,replicaSet,secondaryAcceptableLatencyMS,acceptableLatencyMS,connectWithNoPrimary,authSource,w,wtimeout,j,forceServerObjectId,serializeFunctions,ignoreUndefined,raw,bufferMaxEntries,readPreference,pkFactory,promiseLibrary,readConcern,maxStalenessSeconds,loggerLevel,logger,promoteValues,promoteBuffers,promoteLongs,domainsEnabled,checkServerIdentity,validateOptions,appname,auth,user,password,authMechanism,compression,fsync,readPreferenceTags,numberOfRetries,auto_reconnect,minSize,monitorCommands,retryWrites,retryReads,useNewUrlParser,useUnifiedTopology,serverSelectionTimeoutMS,useRecoveryToken,autoEncryption,driverInfo,tls,tlsInsecure,tlsinsecure,tlsAllowInvalidCertificates,tlsAllowInvalidHostnames,tlsCAFile,tlsCertificateFile,tlsCertificateKeyFile,tlsCertificateKeyFilePassword,minHeartbeatFrequencyMS,heartbeatFrequencyMS,directConnection,appName,maxPoolSize,minPoolSize,maxIdleTimeMS,waitQueueTimeoutMS]
+the options [mode] is not supported
+the options [tags] is not supported
+the options [hedge] is not supported
+the options [preference] is not supported
+the options [isValid] is not supported
+the options [slaveOk] is not supported
+the options [equals] is not supported
+the options [toJSON] is not supported
+the options [source] is not supported
+the options [mechanism] is not supported
+2020-12-14T22:52:56.361Z
+	Error : MongoError: Topology is closed, please connect
+***************Update results*************
+
+null
+the options [0] is not supported
+the options [1] is not supported
+the options [2] is not supported
+the options [3] is not supported
+the options [4] is not supported
+the options [servers] is not supported
+the options [caseTranslate] is not supported
+the options [dbName] is not supported
+the options [srvHost] is not supported
+the options [credentials] is not supported
+the options [username] is not supported
+the server/replset/mongos/db options are deprecated, all their options are supported at the top level of the options object [poolSize,ssl,sslValidate,sslCA,sslCert,sslKey,sslPass,sslCRL,autoReconnect,noDelay,keepAlive,keepAliveInitialDelay,connectTimeoutMS,family,socketTimeoutMS,reconnectTries,reconnectInterval,ha,haInterval,replicaSet,secondaryAcceptableLatencyMS,acceptableLatencyMS,connectWithNoPrimary,authSource,w,wtimeout,j,forceServerObjectId,serializeFunctions,ignoreUndefined,raw,bufferMaxEntries,readPreference,pkFactory,promiseLibrary,readConcern,maxStalenessSeconds,loggerLevel,logger,promoteValues,promoteBuffers,promoteLongs,domainsEnabled,checkServerIdentity,validateOptions,appname,auth,user,password,authMechanism,compression,fsync,readPreferenceTags,numberOfRetries,auto_reconnect,minSize,monitorCommands,retryWrites,retryReads,useNewUrlParser,useUnifiedTopology,serverSelectionTimeoutMS,useRecoveryToken,autoEncryption,driverInfo,tls,tlsInsecure,tlsinsecure,tlsAllowInvalidCertificates,tlsAllowInvalidHostnames,tlsCAFile,tlsCertificateFile,tlsCertificateKeyFile,tlsCertificateKeyFilePassword,minHeartbeatFrequencyMS,heartbeatFrequencyMS,directConnection,appName,maxPoolSize,minPoolSize,maxIdleTimeMS,waitQueueTimeoutMS]
+the options [mode] is not supported
+the options [tags] is not supported
+the options [hedge] is not supported
+the options [preference] is not supported
+the options [isValid] is not supported
+the options [slaveOk] is not supported
+the options [equals] is not supported
+the options [toJSON] is not supported
+the options [source] is not supported
+the options [mechanism] is not supported
+2020-12-14T22:53:26.712Z
+	Error : MongoError: Topology is closed, please connect
+***************Update results*************
+
+null
+the options [0] is not supported
+the options [1] is not supported
+the options [2] is not supported
+the options [3] is not supported
+the options [4] is not supported
+the options [servers] is not supported
+the options [caseTranslate] is not supported
+the options [dbName] is not supported
+the options [srvHost] is not supported
+the options [credentials] is not supported
+the options [username] is not supported
+the server/replset/mongos/db options are deprecated, all their options are supported at the top level of the options object [poolSize,ssl,sslValidate,sslCA,sslCert,sslKey,sslPass,sslCRL,autoReconnect,noDelay,keepAlive,keepAliveInitialDelay,connectTimeoutMS,family,socketTimeoutMS,reconnectTries,reconnectInterval,ha,haInterval,replicaSet,secondaryAcceptableLatencyMS,acceptableLatencyMS,connectWithNoPrimary,authSource,w,wtimeout,j,forceServerObjectId,serializeFunctions,ignoreUndefined,raw,bufferMaxEntries,readPreference,pkFactory,promiseLibrary,readConcern,maxStalenessSeconds,loggerLevel,logger,promoteValues,promoteBuffers,promoteLongs,domainsEnabled,checkServerIdentity,validateOptions,appname,auth,user,password,authMechanism,compression,fsync,readPreferenceTags,numberOfRetries,auto_reconnect,minSize,monitorCommands,retryWrites,retryReads,useNewUrlParser,useUnifiedTopology,serverSelectionTimeoutMS,useRecoveryToken,autoEncryption,driverInfo,tls,tlsInsecure,tlsinsecure,tlsAllowInvalidCertificates,tlsAllowInvalidHostnames,tlsCAFile,tlsCertificateFile,tlsCertificateKeyFile,tlsCertificateKeyFilePassword,minHeartbeatFrequencyMS,heartbeatFrequencyMS,directConnection,appName,maxPoolSize,minPoolSize,maxIdleTimeMS,waitQueueTimeoutMS]
+the options [mode] is not supported
+the options [tags] is not supported
+the options [hedge] is not supported
+the options [preference] is not supported
+the options [isValid] is not supported
+the options [slaveOk] is not supported
+the options [equals] is not supported
+the options [toJSON] is not supported
+the options [source] is not supported
+the options [mechanism] is not supported
+2020-12-14T22:53:56.778Z
+	Error : MongoError: Topology is closed, please connect
+***************Update results*************
+
+null
+the options [0] is not supported
+the options [1] is not supported
+the options [2] is not supported
+the options [3] is not supported
+the options [4] is not supported
+the options [servers] is not supported
+the options [caseTranslate] is not supported
+the options [dbName] is not supported
+the options [srvHost] is not supported
+the options [credentials] is not supported
+the options [username] is not supported
+the server/replset/mongos/db options are deprecated, all their options are supported at the top level of the options object [poolSize,ssl,sslValidate,sslCA,sslCert,sslKey,sslPass,sslCRL,autoReconnect,noDelay,keepAlive,keepAliveInitialDelay,connectTimeoutMS,family,socketTimeoutMS,reconnectTries,reconnectInterval,ha,haInterval,replicaSet,secondaryAcceptableLatencyMS,acceptableLatencyMS,connectWithNoPrimary,authSource,w,wtimeout,j,forceServerObjectId,serializeFunctions,ignoreUndefined,raw,bufferMaxEntries,readPreference,pkFactory,promiseLibrary,readConcern,maxStalenessSeconds,loggerLevel,logger,promoteValues,promoteBuffers,promoteLongs,domainsEnabled,checkServerIdentity,validateOptions,appname,auth,user,password,authMechanism,compression,fsync,readPreferenceTags,numberOfRetries,auto_reconnect,minSize,monitorCommands,retryWrites,retryReads,useNewUrlParser,useUnifiedTopology,serverSelectionTimeoutMS,useRecoveryToken,autoEncryption,driverInfo,tls,tlsInsecure,tlsinsecure,tlsAllowInvalidCertificates,tlsAllowInvalidHostnames,tlsCAFile,tlsCertificateFile,tlsCertificateKeyFile,tlsCertificateKeyFilePassword,minHeartbeatFrequencyMS,heartbeatFrequencyMS,directConnection,appName,maxPoolSize,minPoolSize,maxIdleTimeMS,waitQueueTimeoutMS]
+the options [mode] is not supported
+the options [tags] is not supported
+the options [hedge] is not supported
+the options [preference] is not supported
+the options [isValid] is not supported
+the options [slaveOk] is not supported
+the options [equals] is not supported
+the options [toJSON] is not supported
+the options [source] is not supported
+the options [mechanism] is not supported
+2020-12-14T22:54:26.140Z
+	Error : MongoError: Topology is closed, please connect
+***************Update results*************
+
+null
+the options [0] is not supported
+the options [1] is not supported
+the options [2] is not supported
+the options [3] is not supported
+the options [4] is not supported
+the options [servers] is not supported
+the options [caseTranslate] is not supported
+the options [dbName] is not supported
+the options [srvHost] is not supported
+the options [credentials] is not supported
+the options [username] is not supported
+the server/replset/mongos/db options are deprecated, all their options are supported at the top level of the options object [poolSize,ssl,sslValidate,sslCA,sslCert,sslKey,sslPass,sslCRL,autoReconnect,noDelay,keepAlive,keepAliveInitialDelay,connectTimeoutMS,family,socketTimeoutMS,reconnectTries,reconnectInterval,ha,haInterval,replicaSet,secondaryAcceptableLatencyMS,acceptableLatencyMS,connectWithNoPrimary,authSource,w,wtimeout,j,forceServerObjectId,serializeFunctions,ignoreUndefined,raw,bufferMaxEntries,readPreference,pkFactory,promiseLibrary,readConcern,maxStalenessSeconds,loggerLevel,logger,promoteValues,promoteBuffers,promoteLongs,domainsEnabled,checkServerIdentity,validateOptions,appname,auth,user,password,authMechanism,compression,fsync,readPreferenceTags,numberOfRetries,auto_reconnect,minSize,monitorCommands,retryWrites,retryReads,useNewUrlParser,useUnifiedTopology,serverSelectionTimeoutMS,useRecoveryToken,autoEncryption,driverInfo,tls,tlsInsecure,tlsinsecure,tlsAllowInvalidCertificates,tlsAllowInvalidHostnames,tlsCAFile,tlsCertificateFile,tlsCertificateKeyFile,tlsCertificateKeyFilePassword,minHeartbeatFrequencyMS,heartbeatFrequencyMS,directConnection,appName,maxPoolSize,minPoolSize,maxIdleTimeMS,waitQueueTimeoutMS]
+the options [mode] is not supported
+the options [tags] is not supported
+the options [hedge] is not supported
+the options [preference] is not supported
+the options [isValid] is not supported
+the options [slaveOk] is not supported
+the options [equals] is not supported
+the options [toJSON] is not supported
+the options [source] is not supported
+the options [mechanism] is not supported
+2020-12-14T22:54:56.370Z
+	Error : MongoError: Topology is closed, please connect
+***************Update results*************
+
+null
+the options [0] is not supported
+the options [1] is not supported
+the options [2] is not supported
+the options [3] is not supported
+the options [4] is not supported
+the options [servers] is not supported
+the options [caseTranslate] is not supported
+the options [dbName] is not supported
+the options [srvHost] is not supported
+the options [credentials] is not supported
+the options [username] is not supported
+the server/replset/mongos/db options are deprecated, all their options are supported at the top level of the options object [poolSize,ssl,sslValidate,sslCA,sslCert,sslKey,sslPass,sslCRL,autoReconnect,noDelay,keepAlive,keepAliveInitialDelay,connectTimeoutMS,family,socketTimeoutMS,reconnectTries,reconnectInterval,ha,haInterval,replicaSet,secondaryAcceptableLatencyMS,acceptableLatencyMS,connectWithNoPrimary,authSource,w,wtimeout,j,forceServerObjectId,serializeFunctions,ignoreUndefined,raw,bufferMaxEntries,readPreference,pkFactory,promiseLibrary,readConcern,maxStalenessSeconds,loggerLevel,logger,promoteValues,promoteBuffers,promoteLongs,domainsEnabled,checkServerIdentity,validateOptions,appname,auth,user,password,authMechanism,compression,fsync,readPreferenceTags,numberOfRetries,auto_reconnect,minSize,monitorCommands,retryWrites,retryReads,useNewUrlParser,useUnifiedTopology,serverSelectionTimeoutMS,useRecoveryToken,autoEncryption,driverInfo,tls,tlsInsecure,tlsinsecure,tlsAllowInvalidCertificates,tlsAllowInvalidHostnames,tlsCAFile,tlsCertificateFile,tlsCertificateKeyFile,tlsCertificateKeyFilePassword,minHeartbeatFrequencyMS,heartbeatFrequencyMS,directConnection,appName,maxPoolSize,minPoolSize,maxIdleTimeMS,waitQueueTimeoutMS]
+the options [mode] is not supported
+the options [tags] is not supported
+the options [hedge] is not supported
+the options [preference] is not supported
+the options [isValid] is not supported
+the options [slaveOk] is not supported
+the options [equals] is not supported
+the options [toJSON] is not supported
+the options [source] is not supported
+the options [mechanism] is not supported
+(node:16620) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 newListener listeners added to [MongoClient]. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+2020-12-14T22:55:26.040Z
+	Error : MongoError: Topology is closed, please connect
+***************Update results*************
+
+null
+the options [0] is not supported
+the options [1] is not supported
+the options [2] is not supported
+the options [3] is not supported
+the options [4] is not supported
+the options [servers] is not supported
+the options [caseTranslate] is not supported
+the options [dbName] is not supported
+the options [srvHost] is not supported
+the options [credentials] is not supported
+the options [username] is not supported
+the server/replset/mongos/db options are deprecated, all their options are supported at the top level of the options object [poolSize,ssl,sslValidate,sslCA,sslCert,sslKey,sslPass,sslCRL,autoReconnect,noDelay,keepAlive,keepAliveInitialDelay,connectTimeoutMS,family,socketTimeoutMS,reconnectTries,reconnectInterval,ha,haInterval,replicaSet,secondaryAcceptableLatencyMS,acceptableLatencyMS,connectWithNoPrimary,authSource,w,wtimeout,j,forceServerObjectId,serializeFunctions,ignoreUndefined,raw,bufferMaxEntries,readPreference,pkFactory,promiseLibrary,readConcern,maxStalenessSeconds,loggerLevel,logger,promoteValues,promoteBuffers,promoteLongs,domainsEnabled,checkServerIdentity,validateOptions,appname,auth,user,password,authMechanism,compression,fsync,readPreferenceTags,numberOfRetries,auto_reconnect,minSize,monitorCommands,retryWrites,retryReads,useNewUrlParser,useUnifiedTopology,serverSelectionTimeoutMS,useRecoveryToken,autoEncryption,driverInfo,tls,tlsInsecure,tlsinsecure,tlsAllowInvalidCertificates,tlsAllowInvalidHostnames,tlsCAFile,tlsCertificateFile,tlsCertificateKeyFile,tlsCertificateKeyFilePassword,minHeartbeatFrequencyMS,heartbeatFrequencyMS,directConnection,appName,maxPoolSize,minPoolSize,maxIdleTimeMS,waitQueueTimeoutMS]
+the options [mode] is not supported
+the options [tags] is not supported
+the options [hedge] is not supported
+the options [preference] is not supported
+the options [isValid] is not supported
+the options [slaveOk] is not supported
+the options [equals] is not supported
+the options [toJSON] is not supported
+the options [source] is not supported
+the options [mechanism] is not supported
+2020-12-14T22:55:56.492Z
+	Error : MongoError: Topology is closed, please connect
+***************Update results*************
+
+null
+the options [0] is not supported
+the options [1] is not supported
+the options [2] is not supported
+the options [3] is not supported
+the options [4] is not supported
+the options [servers] is not supported
+the options [caseTranslate] is not supported
+the options [dbName] is not supported
+the options [srvHost] is not supported
+the options [credentials] is not supported
+the options [username] is not supported
+the server/replset/mongos/db options are deprecated, all their options are supported at the top level of the options object [poolSize,ssl,sslValidate,sslCA,sslCert,sslKey,sslPass,sslCRL,autoReconnect,noDelay,keepAlive,keepAliveInitialDelay,connectTimeoutMS,family,socketTimeoutMS,reconnectTries,reconnectInterval,ha,haInterval,replicaSet,secondaryAcceptableLatencyMS,acceptableLatencyMS,connectWithNoPrimary,authSource,w,wtimeout,j,forceServerObjectId,serializeFunctions,ignoreUndefined,raw,bufferMaxEntries,readPreference,pkFactory,promiseLibrary,readConcern,maxStalenessSeconds,loggerLevel,logger,promoteValues,promoteBuffers,promoteLongs,domainsEnabled,checkServerIdentity,validateOptions,appname,auth,user,password,authMechanism,compression,fsync,readPreferenceTags,numberOfRetries,auto_reconnect,minSize,monitorCommands,retryWrites,retryReads,useNewUrlParser,useUnifiedTopology,serverSelectionTimeoutMS,useRecoveryToken,autoEncryption,driverInfo,tls,tlsInsecure,tlsinsecure,tlsAllowInvalidCertificates,tlsAllowInvalidHostnames,tlsCAFile,tlsCertificateFile,tlsCertificateKeyFile,tlsCertificateKeyFilePassword,minHeartbeatFrequencyMS,heartbeatFrequencyMS,directConnection,appName,maxPoolSize,minPoolSize,maxIdleTimeMS,waitQueueTimeoutMS]
+the options [mode] is not supported
+the options [tags] is not supported
+the options [hedge] is not supported
+the options [preference] is not supported
+the options [isValid] is not supported
+the options [slaveOk] is not supported
+the options [equals] is not supported
+the options [toJSON] is not supported
+the options [source] is not supported
+the options [mechanism] is not supported
+2020-12-14T22:56:26.126Z
+	Error : MongoError: Topology is closed, please connect
+***************Update results*************
+
+null
