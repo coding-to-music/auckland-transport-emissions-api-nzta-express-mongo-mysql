@@ -46,15 +46,6 @@ async function onDataReceieved(data, db) {
 
     vehicle_id = d.trip_update.vehicle != undefined ? d.trip_update.vehicle.id : null;
     
-<<<<<<< HEAD:RealtimeScript.js
-    return [UUID, arrived, stop_time_arrival, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id];
-  })
-
-  console.log(flat);
-  sqlInstance.createConnection(connectionObject);
-  let insertStmt = "insert into realtime_raw (UUID, arrival, stop_time, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id) VALUES ? "
-  sqlInstance.insertStatement(insertStmt, flat);
-=======
     return {
       "UUID" : UUID, 
       "arrived?" : arrived, 
@@ -69,7 +60,6 @@ async function onDataReceieved(data, db) {
       "vehicle_id" : vehicle_id
     };
   });
->>>>>>> ddeb301d85cae5e98a87c8f3241ca4147af5c845:realtimeScript/RealtimeScript.js
 
   let dbo = db.db("ate_model");
   let bulk = dbo.collection("realtime_raw").initializeOrderedBulkOp();
