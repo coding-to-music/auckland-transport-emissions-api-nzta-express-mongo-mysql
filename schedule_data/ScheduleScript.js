@@ -66,70 +66,73 @@ async function main() {
   calendar = calendar.response.filter( service => filteredServiceIDs.includes(service.service_id) );
   calendarExceptions = calendarExceptions.response.filter( service => filteredServiceIDs.includes(service.service_id) ); 
 
+  
+
   // Process into valid form
 
   let routeInsert = flattenRoute(routeInfo);
-  let shapeInsert = trips.map( trip => trip.shape_id );
+  let shapeInsert = trips.map( trip => [trip.shape_id, null] );
   let tripInsert = flattenTrips(trips);
   let calendarInsert = flattenCalendar(calendar);
   let exceptionsInsert = flattenExceptions(calendarExceptions);
 
-  
+  let shape_id_set = new Set();
+  shapeInsert.map( (d) => shape_id_set.add(d));
+
+  console.log(routeInfo.length, trips.length, calendar.length, calendarExceptions.length, shapeInsert.length, shape_id_set.size)
 
   // Post to mySql
 
-  let sqlInsert = "insert into routes (route_id, agency_id, route_short_name, route_long_name) VALUES ? ";
-  postSQLData(sqlInsert, routeInsert);
+  // let sqlInsert = "replace into routes (route_id, agency_id, route_short_name, route_long_name) VALUES ? ";
+  // await postSQLData(sqlInsert, routeInsert, 0);
 
-  sqlInsert = "insert into shapes (shape_id) VALUES ? ";
-  postSQLData(sqlInsert, routeInsert);
+  // sqlInsert = "replace into shapes (shape_id, shape_path) VALUES ? ";
+  // await postSQLData(sqlInsert, shapeInsert, 0);
 
-  sqlInsert = "insert into schedule_trips (trip_id, route_id, shape_id, service_id, schedule_start_stop_id, schedule_end_stop_id, schedule_number_stops, schedule_time, distance) VALUES ? ";
-  postSQLData(sqlInsert, tripInsert);
+  // sqlInsert = "replace into services (service_id, mon, tue, wed, thu, fri, sat, sun, date_start, date_end, date_exceptions) VALUES ? ";
+  // await postSQLData(sqlInsert, calendarInsert, 0);
 
-  sqlInsert = "insert into services (service_id, mon, tue, wed, thu, fri, sat, sun, date_start, date_end, date_exceptions) VALUES ? ";
-  postSQLData(sqlInsert, calendarInsert);
+  // sqlInsert = "replace into schedule_trips (trip_id, route_id, shape_id, service_id, schedule_start_stop_id, schedule_end_stop_id, schedule_number_stops, schedule_time, distance) VALUES ? ";
+  // await postSQLData(sqlInsert, tripInsert, 0);
 
-  let dataStr = "";
+  // let dataStr = "";
 
-  for (let i = 0; i < exceptionsInsert[0].length; i++) {
-    dataStr += "('"+exceptionsInsert[0][i]+ "', '" +JSON.stringify(exceptionsInsert[1][i]) + "'), "
-  }
+  // for (let i = 0; i < exceptionsInsert[0].length; i++) {
+  //   dataStr += "('"+exceptionsInsert[0][i]+ "', '" +JSON.stringify(exceptionsInsert[1][i]) + "'), "
+  // }
 
-  console.log(dataStr.slice(0,250));
+  // console.log(dataStr.slice(0,250));
 
-  let sqlString = "INSERT INTO services (service_id, date_exceptions) VALUES " +
-                    dataStr.slice(0, dataStr.length-2) +
-                    " ON DUPLICATE KEY UPDATE `date_exceptions` = VALUES(`date_exceptions`)";
+  // let sqlString = "INSERT INTO services (service_id, date_exceptions) VALUES " +
+  //                   dataStr.slice(0, dataStr.length-2) +
+  //                   " ON DUPLICATE KEY UPDATE `date_exceptions` = VALUES(`date_exceptions`)";
 
-  console.log(sqlString);
+  // let doubleCheck = "SELECT * FROM `services` WHERE `service_id` = '1085195742-20201205123725_v95.82'";
 
-  let doubleCheck = "SELECT * FROM `services` WHERE `service_id` = '1085195742-20201205123725_v95.82'";
+  // let con = mysql.createConnection(connectionObject);
+  // con.connect();
 
-  let con = mysql.createConnection(connectionObject);
-  con.connect();
+  // con.query(sqlString, function (err, results, fields) {
+  //   if (err) {
+  //       console.log(err.message);
+  //   } else {
+  //       console.log("execute results: ");
+  //       console.log(results);
+  // }});
 
-  con.query(sqlString, function (err, results, fields) {
-    if (err) {
-        console.log(err.message);
-    } else {
-        console.log("execute results: ");
-        console.log(results);
-  }});
+  // con.query(doubleCheck, function (err, results, fields) {
+  //   if (err) {
+  //       console.log(err.message);
+  //   } else {
+  //       console.log("execute results: ");
+  //       console.log(results);
+  // }});
 
-  con.query(doubleCheck, function (err, results, fields) {
-    if (err) {
-        console.log(err.message);
-    } else {
-        console.log("execute results: ");
-        console.log(results);
-  }});
-
-  con.end(function (err) {
-    if (err) {
-        return console.log(err.message);
-    }
-  });
+  // con.end(function (err) {
+  //   if (err) {
+  //       return console.log(err.message);
+  //   }
+  // });
 
 }
 
@@ -210,26 +213,38 @@ function flattenExceptions(serviceExceptions) {
 
 /* Method for posting formed arrays into mySQL tables */
 
-function postSQLData(insertStmt, data) {
+function postSQLData(insertStmt, data, resendCount) {
   let con = mysql.createConnection(connectionObject);
-  con.connect();
-
-  
-
-  con.query(insertStmt, [data], function (err, results, fields) {
-    if (err) {
-        console.log(err.message);
-    } else {
-        console.log("Row inserted: " + results.affectedRows);
-        console.log(results);
+  return new Promise( function (resolve, reject) {
+    if(resendCount > 3) {
+      console.log("Error in query or connection, exceeded 3 resends");
+      return resolve();
     }
+    con.connect();
+
+    con.query(insertStmt, [data], function (err, results, fields) {
+      if (err) {
+          console.log(err.message);
+          con.end(errFunc);
+          setTimeout(() => {
+            console.log('resending query');
+            postSQLData(insertStmt, data, resendCount + 1).then( resolve );
+          }, 500);
+      } else {
+          console.log("Row inserted: " + results.affectedRows);
+          console.log(results);
+          con.end(errFunc);
+          resolve();
+      }
+    });
+
   })
+}
 
-  con.end(function (err) {
-    if (err) {
-        return console.log(err.message);
-    }
-});
+function errFunc (err) {
+  if (err) {
+    console.log(err.message);
+  }
 }
 
 
