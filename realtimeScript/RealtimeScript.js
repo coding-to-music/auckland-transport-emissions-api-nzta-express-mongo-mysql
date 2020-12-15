@@ -1,25 +1,30 @@
 //IMPORTS
 const fetch = require('../node_modules/node-fetch');
-let mysql = require("../node_modules/mysql");
-let SQLManagment = require("../SQLManagment");
-let pool = new SQLManagment();
+const MongoClient = require('mongodb').MongoClient;
+const uri = "mongodb+srv://chris:YFwh2XjNZ2XY8cv9@cluster0.l7ehu.mongodb.net/ate_model?retryWrites=true&w=majority";
+const client = new MongoClient(uri, { useUnifiedTopology: true });
+
+//FileSystem for logging
+const fs = require("fs");
+const logFilePath = "./realtimeScript/RealtimeScriptLogs.txt";
+if (fs.existsSync(logFilePath)) {
+  try {
+    fs.unlinkSync(logFilePath);
+  } catch (err) {
+    console.log(err);
+  }
+}
 
 let key = "b9f2e4f0b5e140b79a698c0bb9298a7f";
 url = '', data = {};
 
-// module.exports = function() {
-  console.log("startin that biii");
-  setInterval(() => callTripUpdates().then(data=> {
-    onDataReceieved(data);
+client.connect((err, db) => {
+    setInterval(() => callTripUpdates().then(data=> {
+    onDataReceieved(data, db);
   }), 30000);
-// }
-// callTripUpdates().then(data=> {
-  // onDataReceieved(data);
-// })
+})
 
-async function onDataReceieved(data) {
-  console.log(data.response.entity);
-
+async function onDataReceieved(data, db) {
   let flat = data.response.entity.map(d => {
     let UUID, stop_time_arrival, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id;
     UUID = d.trip_update.trip.start_date + "-" + d.trip_update.trip.trip_id;
@@ -54,52 +59,42 @@ async function onDataReceieved(data) {
       "trip_id" : trip_id, 
       "vehicle_id" : vehicle_id
     };
-  })
-
-  console.log(flat);
-
-  const MongoClient = require('mongodb').MongoClient;
-  const uri = "mongodb+srv://chris:YFwh2XjNZ2XY8cv9@cluster0.l7ehu.mongodb.net/ate_model?retryWrites=true&w=majority";
-  const client = new MongoClient(uri, { useUnifiedTopology: true });
-  client.connect((err, db) => {
-    console.log(db);
-    // const collection = client.db("ate_model").collection("realtime_raw");
-    
-    let dbo = db.db("ate_model");
-    const options = {"upsert" : true};
-
-    console.log(dbo);
-  
-    dbo.collection("realtime_raw").updateMany(flat, function(err, res) {
-      if (err) console.log(err);
-      console.log("Number of documents inserted: " + res.insertedCount);
-      db.close();
-    }, options);
   });
 
+  let dbo = db.db("ate_model");
+  let bulk = dbo.collection("realtime_raw").initializeOrderedBulkOp();
 
-  //UNDEFINED = BAD
-  // let insertStmt = "insert into realtime_raw (UUID, arrival, stop_time, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id) VALUES ? "
-  // + "ON DUPLICATE KEY UPDATE `arrival`=VALUES(`arrival`), `stop_time`=VALUES(`stop_time`), `stop_id`=VALUES(`stop_id`), `stop_sequence`=VALUES(`stop_sequence`)";
-  // let p = new Promise((res,rej) => {
-  //   pool.executeQuery(insertStmt, flat, function (err, data) {
-  //     if (err) throw err;
-  //     console.log(data);
-  //     res(data);
-  //   })
-  // })
-  // .then((data) => {
-  //   pool.executeQuery("insert into info (time, ok) VALUES ? ", [[[Date.now(), JSON.stringify(data)]]], function(err, res) {
-  //     if (err) throw err;
-  //     console.log(res);
-  //     console.log("ok");
-  //   });
-  // })
+    for (let each of flat) {
+      //find entry for trip
+      bulk.find({
+        "UUID": each.UUID
+      }).updateOne({
+        "$set": each
+      });
+      //Upsert entry for trip
+      bulk.find({
+        "UUID": each.UUID
+      }).upsert().updateOne({
+        "$setOnInsert": each
+      });
+    }
+    //Call execute
+    bulk.execute(function (err, updateResult) {
+      console.log(err, updateResult);
+      fs.appendFile('realtimeScript/RealtimeScriptLogs.txt',
+        new Date() + "\n" + "\tError:" + err + "\n" + "\tResults:\n" + "\t\tInserted: " + updateResult.nInserted + "\n" + "\t\tUpserted: " + updateResult.nUpserted + "\n" + "\t\tMatched: " + updateResult.nMatched + "\n" + "\t\tModified: " + updateResult.nModified + "\n" + "\t\tLastOp: " + updateResult.lastOp + "\n", (err) => {
+          if (err) throw err;
+        })
+      fs.appendFile('realtimeScript/RealtimeScriptLogs.txt',
+        "\n", (err) => {
+            if (err) throw err;
+          })
+        
+    });
+  // db.close();
 }
 
 async function callTripUpdates() {
-  let joshURI = "";
-  let joshesKey = "99edd1e8c5504dfc955a55aa72c2dbac";
   const response = await fetch("https://api.at.govt.nz/v2/public/realtime/tripupdates?", {
     method: 'GET', // *GET, POST, PUT, DELETE, etc.
     mode: 'cors', // no-cors, *cors, same-origin
@@ -107,7 +102,7 @@ async function callTripUpdates() {
     credentials: 'same-origin', // include, *same-origin, omit
     headers: {
       'Content-Type': 'application/json',
-      "Ocp-Apim-Subscription-Key": joshesKey
+      "Ocp-Apim-Subscription-Key": key
       // 'Content-Type': 'application/x-www-form-urlencoded',
     },
     redirect: 'follow', // manual, *follow, error
