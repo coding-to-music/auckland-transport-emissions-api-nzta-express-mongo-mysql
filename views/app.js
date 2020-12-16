@@ -45,8 +45,36 @@ app.get('/distinct', (req, res) => {
   })
 })
 
-app.get("/retrieve_realtime", (req, res) => {
-  
+app.get("/completed_trips", (req, res) => {
+  client.connect(async (err, db) => {
+    let dbo = db.db("ate_model");
+    let collection = dbo.collection("realtime_raw");
+
+    await collection.find({"date" : "20201215"}, {}).toArray((err, docs) => {
+      if (err) throw err;
+      console.log("Total: ", docs.length);
+    })
+    let query = {
+      "UUID" : {"$nin" : [null]},
+      "arrived?" : {"$nin" : [null]},
+      "date" : {"$in" : ["20201215"]},
+      "direction_id" : {"$nin" : [null]},
+      "route_id" : {"$nin" : [null]},
+      "start_time" : {"$nin" : [null]},
+      "stop_id" : {"$nin" : [null]},
+      "stop_sequence" : {"$nin" : [null]},
+      "stop_time_arrival" : {"$nin" : [null]},
+      "stop_time_arrival.time" : {"$nin" : [null]},
+      "stop_time_arrival.delay" : {"$nin" : [null]},
+      "stop_time_arrival.uncertainty" : {"$nin" : [null]},
+      "trip_id" : {"$nin" : [null]},
+      "vehicle_id" : {"$nin" : [null]},
+    }
+    await collection.find(query, {}).toArray((err, docs) => {
+      if (err) throw err;
+      console.log("Complete: ", docs.length);
+    })
+  })
 })
 
 //Uses URL format string 
@@ -110,3 +138,19 @@ app.post('/postThat', (req, res) => {
 app.listen(config.port, () => {
   console.log(`Express App running at http://localhost:${config.port}`);
 })
+
+function formGetQuery(endpoint, args) {
+  let string = config.host;
+  string = string.concat(endpoint);
+  if (args != undefined) {
+    string = string + "?";
+  }
+  for (let arg in args) {
+    if (args[Object.keys(args)[0]] === args[arg]) {
+      string = string.concat(arg + "=" + args[arg]);
+    } else {
+      string = string.concat("&" + arg + "=" + args[arg]);
+    }
+  }
+  return string;
+}

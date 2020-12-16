@@ -1,99 +1,81 @@
-Tue Dec 15 2020 12:34:22 GMT+1300 (New Zealand Daylight Time)
+Wed Dec 16 2020 14:02:08 GMT+1300 (New Zealand Daylight Time)
 	Error:null
 	Results:
 		Inserted: 0
-		Upserted: undefined
-		Matched: 2826
-		Modified: 200
+		Upserted: 5
+		Matched: 2794
+		Modified: 55
 		LastOp: undefined
 
-
-Tue Dec 15 2020 12:34:52 GMT+1300 (New Zealand Daylight Time)
+Wed Dec 16 2020 14:02:58 GMT+1300 (New Zealand Daylight Time)
 	Error:null
 	Results:
 		Inserted: 0
-		Upserted: undefined
-		Matched: 2812
-		Modified: 184
-		LastOp: undefined
-
-Tue Dec 15 2020 12:35:22 GMT+1300 (New Zealand Daylight Time)
-	Error:null
-	Results:
-		Inserted: 0
-		Upserted: undefined
-		Matched: 2806
-		Modified: 169
-		LastOp: undefined
-Tue Dec 15 2020 12:35:52 GMT+1300 (New Zealand Daylight Time)
-	Error:null
-	Results:
-		Inserted: 0
-		Upserted: undefined
+		Upserted: 0
 		Matched: 2810
-		Modified: 177
+		Modified: 59
 		LastOp: undefined
 
-Tue Dec 15 2020 12:36:22 GMT+1300 (New Zealand Daylight Time)
+Wed Dec 16 2020 14:03:51 GMT+1300 (New Zealand Daylight Time)
 	Error:null
 	Results:
 		Inserted: 0
-		Upserted: undefined
-		Matched: 2826
-		Modified: 168
+		Upserted: 1
+		Matched: 2804
+		Modified: 64
 		LastOp: undefined
 
-Tue Dec 15 2020 12:36:52 GMT+1300 (New Zealand Daylight Time)
+Wed Dec 16 2020 14:04:30 GMT+1300 (New Zealand Daylight Time)
 	Error:null
 	Results:
 		Inserted: 0
-		Upserted: undefined
-		Matched: 2856
-		Modified: 191
+		Upserted: 1
+		Matched: 2794
+		Modified: 87
 		LastOp: undefined
 
-Tue Dec 15 2020 12:37:22 GMT+1300 (New Zealand Daylight Time)
+Wed Dec 16 2020 14:05:30 GMT+1300 (New Zealand Daylight Time)
 	Error:null
 	Results:
 		Inserted: 0
-		Upserted: undefined
-		Matched: 2852
-		Modified: 180
+		Upserted: 4
+		Matched: 2786
+		Modified: 236
 		LastOp: undefined
 
-
-Tue Dec 15 2020 12:37:52 GMT+1300 (New Zealand Daylight Time)
+Wed Dec 16 2020 14:06:30 GMT+1300 (New Zealand Daylight Time)
 	Error:null
 	Results:
 		Inserted: 0
-		Upserted: undefined
-		Matched: 2836
-		Modified: 190
+		Upserted: 0
+		Matched: 2788
+		Modified: 53
 		LastOp: undefined
-Tue Dec 15 2020 12:38:22 GMT+1300 (New Zealand Daylight Time)
+
+Wed Dec 16 2020 14:07:26 GMT+1300 (New Zealand Daylight Time)
 	Error:null
 	Results:
 		Inserted: 0
-		Upserted: undefined
-		Matched: 2832
-		Modified: 188
+		Upserted: 0
+		Matched: 2780
+		Modified: 49
 		LastOp: undefined
 
-
-Tue Dec 15 2020 12:38:52 GMT+1300 (New Zealand Daylight Time)
+Wed Dec 16 2020 14:08:14 GMT+1300 (New Zealand Daylight Time)
 	Error:null
 	Results:
 		Inserted: 0
-		Upserted: undefined
-		Matched: 2834
-		Modified: 179
+		Upserted: 1
+		Matched: 2774
+		Modified: 72
 		LastOp: undefined
 
-Tue Dec 15 2020 12:39:22 GMT+1300 (New Zealand Daylight Time)
+
+Wed Dec 16 2020 14:09:01 GMT+1300 (New Zealand Daylight Time)
 	Error:null
 	Results:
 		Inserted: 0
-		Upserted: undefined
-		Matched: 2828
-		Modified: 171
+		Upserted: 5
+		Matched: 2776
+		Modified: 62
 		LastOp: undefined

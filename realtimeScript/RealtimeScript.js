@@ -37,7 +37,7 @@ async function onDataReceieved(data, db) {
       stop_id = d.trip_update.stop_time_update.stop_id;
       stop_sequence = d.trip_update.stop_time_update.stop_sequence;
     }
-    
+
     direction_id = d.trip_update.trip.direction_id;
     route_id = d.trip_update.trip.route_id;
     date = d.trip_update.trip.start_date;
@@ -45,52 +45,52 @@ async function onDataReceieved(data, db) {
     trip_id = d.trip_update.trip.trip_id;
 
     vehicle_id = d.trip_update.vehicle != undefined ? d.trip_update.vehicle.id : null;
-    
+
     return {
-      "UUID" : UUID, 
-      "arrived?" : arrived, 
-      "stop_time_arrival" : stop_time_arrival,
-      "stop_id" : stop_id, 
-      "stop_sequence" : stop_sequence, 
-      "direction_id" : direction_id, 
-      "route_id" : route_id, 
-      "date" : date, 
-      "start_time" : start_time, 
-      "trip_id" : trip_id, 
-      "vehicle_id" : vehicle_id
+      "UUID": UUID,
+      "arrived?": arrived,
+      "stop_time_arrival": stop_time_arrival,
+      "stop_id": stop_id,
+      "stop_sequence": stop_sequence,
+      "direction_id": direction_id,
+      "route_id": route_id,
+      "date": date,
+      "start_time": start_time,
+      "trip_id": trip_id,
+      "vehicle_id": vehicle_id
     };
   });
 
   let dbo = db.db("ate_model");
   let bulk = dbo.collection("realtime_raw").initializeOrderedBulkOp();
 
-    for (let each of flat) {
-      //find entry for trip
-      bulk.find({
-        "UUID": each.UUID
-      }).updateOne({
-        "$set": each
-      });
-      //Upsert entry for trip
-      bulk.find({
-        "UUID": each.UUID
-      }).upsert().updateOne({
-        "$setOnInsert": each
-      });
-    }
-    //Call execute
-    bulk.execute(function (err, updateResult) {
-      console.log(err, updateResult);
-      fs.appendFile('realtimeScript/RealtimeScriptLogs.txt',
-        new Date() + "\n" + "\tError:" + err + "\n" + "\tResults:\n" + "\t\tInserted: " + updateResult.nInserted + "\n" + "\t\tUpserted: " + updateResult.nUpserted + "\n" + "\t\tMatched: " + updateResult.nMatched + "\n" + "\t\tModified: " + updateResult.nModified + "\n" + "\t\tLastOp: " + updateResult.lastOp + "\n", (err) => {
-          if (err) throw err;
-        })
-      fs.appendFile('realtimeScript/RealtimeScriptLogs.txt',
-        "\n", (err) => {
-            if (err) throw err;
-          })
-        
+  for (let each of flat) {
+    //find entry for trip
+    bulk.find({
+      "UUID": each.UUID
+    }).updateOne({
+      "$set": each
     });
+    //Upsert entry for trip
+    bulk.find({
+      "UUID": each.UUID
+    }).upsert().updateOne({
+      "$setOnInsert": each
+    });
+  }
+  //Call execute
+  bulk.execute(function (err, updateResult) {
+    console.log(err, updateResult);
+    fs.appendFile('realtimeScript/RealtimeScriptLogs.txt',
+      new Date() + "\n" + "\tError:" + err + "\n" + "\tResults:\n" + "\t\tInserted: " + updateResult.nInserted + "\n" + "\t\tUpserted: " + updateResult.nUpserted + "\n" + "\t\tMatched: " + updateResult.nMatched + "\n" + "\t\tModified: " + updateResult.nModified + "\n" + "\t\tLastOp: " + updateResult.lastOp + "\n", (err) => {
+        if (err) throw err;
+      })
+    fs.appendFile('realtimeScript/RealtimeScriptLogs.txt',
+      "\n", (err) => {
+        if (err) throw err;
+      })
+
+  });
   // db.close();
 }
 
