@@ -7,20 +7,21 @@ const client = new MongoClient(uri, { useUnifiedTopology: true });
 //FileSystem for logging
 const fs = require("fs");
 const logFilePath = "./realtimeScript/RealtimeScriptLogs.txt";
-if (fs.existsSync(logFilePath)) {
-  try {
-    fs.unlinkSync(logFilePath);
-  } catch (err) {
-    console.log(err);
-  }
-}
+const processId = makeid(10);
+// if (fs.existsSync(logFilePath)) {
+//   try {
+//     fs.unlinkSync(logFilePath);
+//   } catch (err) {
+//     console.log(err);
+//   }
+// }
 
 let key = "b9f2e4f0b5e140b79a698c0bb9298a7f";
 url = '', data = {};
 
 client.connect((err, db) => {
-    setInterval(() => callTripUpdates().then(data=> {
-    onDataReceieved(data, db);
+  setInterval(() => callTripUpdates().then(data=> {
+    onDataReceieved(data, db); 
   }), 30000);
 })
 
@@ -29,7 +30,7 @@ async function onDataReceieved(data, db) {
     let UUID, stop_time_arrival, stop_id, stop_sequence, direction_id, route_id, date, start_time, trip_id, vehicle_id;
     UUID = d.trip_update.trip.start_date + "-" + d.trip_update.trip.trip_id;
 
-    let arrived = null;
+    let arrived = {};
     if (d.trip_update.stop_time_update != undefined) {
       arrived = d.trip_update.stop_time_update.arrival == undefined ? true : false;
       let property = arrived === 0 ? "departure" : "arrival";
@@ -79,19 +80,21 @@ async function onDataReceieved(data, db) {
     });
   }
   //Call execute
-  bulk.execute(function (err, updateResult) {
+  console.log(bulk);
+  bulk.execute(
+    function (err, updateResult) {
     console.log(err, updateResult);
-    fs.appendFile('realtimeScript/RealtimeScriptLogs.txt',
-      new Date() + "\n" + "\tError:" + err + "\n" + "\tResults:\n" + "\t\tInserted: " + updateResult.nInserted + "\n" + "\t\tUpserted: " + updateResult.nUpserted + "\n" + "\t\tMatched: " + updateResult.nMatched + "\n" + "\t\tModified: " + updateResult.nModified + "\n" + "\t\tLastOp: " + updateResult.lastOp + "\n", (err) => {
-        if (err) throw err;
-      })
-    fs.appendFile('realtimeScript/RealtimeScriptLogs.txt',
-      "\n", (err) => {
-        if (err) throw err;
-      })
-
-  });
-  // db.close();
+    // fs.appendFile('realtimeScript/RealtimeScriptLogs.txt',
+    //   new Date() + ", process: " + processId + "\n" + "\tError:" + err + "\n" + "\tResults:\n" + "\t\tInserted: " + updateResult.nInserted + "\n" + "\t\tUpserted: " + updateResult.nUpserted + "\n" + "\t\tMatched: " + updateResult.nMatched + "\n" + "\t\tModified: " + updateResult.nModified + "\n" + "\t\tLastOp: " + updateResult.lastOp + "\n", (err) => {
+    //     if (err) throw err;
+    //   })
+    // fs.appendFile('realtimeScript/RealtimeScriptLogs.txt',
+    //   "\n", (err) => {
+    //     if (err) throw err;
+    //   })
+    return updateResult;
+  }
+  )
 }
 
 async function callTripUpdates() {
@@ -222,4 +225,14 @@ function weight_factor(size, weight, passengerKm, serviceKm) {
     }
   
     return { 'empty': tareFactor, 'loaded': loadedfactor}
+}
+
+function makeid(length) {
+  var result           = '';
+  var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  var charactersLength = characters.length;
+  for ( var i = 0; i < length; i++ ) {
+     result += characters.charAt(Math.floor(Math.random() * charactersLength));
+  }
+  return result;
 }

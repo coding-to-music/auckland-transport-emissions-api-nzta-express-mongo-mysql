@@ -11,7 +11,7 @@ const path = require('path');
 
 //DB IMPORTS
 const MongoClient = require('../node_modules/mongodb').MongoClient;
-const client = new MongoClient(config.uri, { useUnifiedTopology: true });
+const client = new MongoClient(config.mongodb.uri, { useUnifiedTopology: true });
 
 app.use(express.static(path.join('public')));
 app.use(express.static(path.join('views')));
@@ -20,72 +20,128 @@ app.use(express.static(path.join('views')));
 app.use(bodyParser.urlencoded({ extended: true }));
 // app.use(bodyParser.json());
 
-app.get('/', (req, res) => {
-  //render page
-  console.log("Yeow, we running bruh dew.");
-  res.sendFile(path.join(__dirname + "/index/index.html"));
-})
+client.connect(async (err, db) => {
+  let dbo = db.db("ate_model");
+  let collection = dbo.collection("realtime_raw");
 
-app.get('/distinct', (req, res) => {
-  //render page
-  client.connect(async (err, db) => {
-    let dbo = db.db("ate_model");
-    let collection = dbo.collection("realtime_raw");
-
-    await collection.distinct("UUID", {}, {}, function(err, results) {
-      if (err) throw err;
-      console.log(results.length)
-      res.send(results);
-    })
-
-    await collection.find({}, {}).toArray((err, docs) => {
-      if (err) throw err;
-      console.log(docs.length)
-    })
+  app.get('/', (req, res) => {
+    //render page
+    console.log("Yeow, we running bruh dew.");
+    res.sendFile(path.join(__dirname + "/index/index.html"));
   })
-})
+  
+  app.get('/distinct', async (req, res) => {
+    //render page  
+      await collection.distinct("UUID", {}, {}, function(err, results) {
+        if (err) throw err;
+        console.log(results.length)
+        res.send(results);
+      })
+  
+      await collection.find({}, {}).toArray((err, docs) => {
+        if (err) throw err;
+        console.log(docs.length)
+      })
+  })
+  
+  app.get("/completed_trips", async (req, res) => {
+    let dateToCheck = "20201217";
 
-app.get("/completed_trips", (req, res) => {
-  client.connect(async (err, db) => {
-    let dbo = db.db("ate_model");
-    let collection = dbo.collection("realtime_raw");
-
-    await collection.find({"date" : "20201215"}, {}).toArray((err, docs) => {
+    await collection.find({ "date": dateToCheck }, {}).toArray((err, docs) => {
       if (err) throw err;
       console.log("Total: ", docs.length);
     })
+
     let query = {
-      "UUID" : {"$nin" : [null]},
-      "arrived?" : {"$nin" : [null]},
-      "date" : {"$in" : ["20201215"]},
-      "direction_id" : {"$nin" : [null]},
-      "route_id" : {"$nin" : [null]},
-      "start_time" : {"$nin" : [null]},
-      "stop_id" : {"$nin" : [null]},
-      "stop_sequence" : {"$nin" : [null]},
-      "stop_time_arrival" : {"$nin" : [null]},
-      "stop_time_arrival.time" : {"$nin" : [null]},
-      "stop_time_arrival.delay" : {"$nin" : [null]},
-      "stop_time_arrival.uncertainty" : {"$nin" : [null]},
-      "trip_id" : {"$nin" : [null]},
-      "vehicle_id" : {"$nin" : [null]},
+      "UUID": { "$nin": [null] },
+      "arrived?": { "$nin": [null] },
+      "date": { "$in": [dateToCheck] },
+      "direction_id": { "$nin": [null] },
+      "route_id": { "$nin": [null] },
+      "start_time": { "$nin": [null] },
+      "stop_id": { "$nin": [null] },
+      "stop_sequence": { "$nin": [null] },
+      "stop_time_arrival": { "$nin": [null] },
+      "stop_time_arrival.time": { "$nin": [null] },
+      "stop_time_arrival.delay": { "$nin": [null] },
+      "stop_time_arrival.uncertainty": { "$nin": [null] },
+      "trip_id": { "$nin": [null] },
+      "vehicle_id": { "$nin": [null] },
     }
+    
     await collection.find(query, {}).toArray((err, docs) => {
       if (err) throw err;
       console.log("Complete: ", docs.length);
     })
+
+    let pipeline = [
+      {
+        "$match": {
+          "date": dateToCheck,
+          "$or": [
+            { "stop_id": { "$in": [null] } },
+            { "stop_sequence": { "$in": [null] } },
+            { "stop_time_arrival": { "$in": [null] } },
+            { "stop_time_arrival.time": { "$in": [null] } },
+            { "stop_time_arrival.delay": { "$in": [null] } },
+            { "stop_time_arrival.uncertainty": { "$in": [null] } }
+          ]
+        }
+      }
+    ]
+
+    let pipeline2 = [
+      {
+        "$match": {
+          "date": dateToCheck,
+          // "stop_sequence" : 14,
+          "$or": [
+            { "stop_id": { "$in": [null] } },
+            { "stop_sequence": { "$in": [null] } },
+            { "stop_time_arrival": { "$in": [null] } },
+            { "stop_time_arrival.time": { "$in": [null] } },
+            { "stop_time_arrival.delay": { "$in": [null] } },
+            { "stop_time_arrival.uncertainty": { "$in": [null] } }
+          ]
+        }
+      },
+      // {
+      //   "$project" : {
+      //       "start_time" : 1,
+      //       "date" : 1,
+      //   }
+      // },
+      {
+        "$group": {
+          "_id": {
+            // "start_time" : "$start_time",
+            // "stop_sequence" : "$stop_sequence",
+            "stop_id": "$stop_id"
+          }
+        }
+      },
+      // {
+      //   "" : 
+      // }
+    ]
+
+    await collection.aggregate(pipeline).toArray((err, docs) => {
+      if (err) throw err;
+      console.log("No stop time arrival: ", docs.length);
+    })
+
+    await collection.aggregate(pipeline2).toArray((err, docs) => {
+      if (err) throw err;
+      console.log("Stop Sequence 14: ", docs.length);
+      res.send(docs);
+    })
   })
-})
 
-//Uses URL format string 
-//articles?year=2016&month=1&day=19
-app.get("/realtime_raw", (req, res) => {
-  let response = [];
-  client.connect(async (err, db) => {
-    let dbo = db.db("ate_model");
-    let collection = dbo.collection("realtime_raw");
-
-    let options = req.query === {} ? {"limit": 1} : {};
+  //Uses URL format string 
+  //articles?year=2016&month=1&day=19
+  app.get("/realtime_raw", (req, res) => {
+    let response = [];
+    let options = req.query === {} ? { "limit": 1 } : {};
 
     collection.find(req.query, options).toArray((err, docs) => {
       response.push("retrieved docs: ");
@@ -93,44 +149,39 @@ app.get("/realtime_raw", (req, res) => {
       res.send(response);
     });
   })
+  
+  app.post('/postThat', (req, res) => {
+    //code to perform particular action.
+    //To access POST variable use req.body()methods.
+    console.log(req.body);
+      for (let each of req.body) {
+        //find entry for trip
+        bulk.find({
+          "UUID": each.UUID
+        }).updateOne({
+          "$set": each
+        });
+        //Upsert entry for trip
+        bulk.find({
+          "UUID": each.UUID
+        }).upsert().updateOne({
+          "$setOnInsert": each
+        });
+      }
+      //Call execute
+      bulk.execute(function (err, updateResult) {
+        console.log(err, updateResult);
+        fs.appendFile('realtimeScript/RealtimeScriptLogs.txt',
+          new Date() + "\n" + "\tError:" + err + "\n" + "\tResults:\n" + "\t\tInserted: " + updateResult.nInserted + "\n" + "\t\tUpserted: " + updateResult.nUpserted + "\n" + "\t\tMatched: " + updateResult.nMatched + "\n" + "\t\tModified: " + updateResult.nModified + "\n" + "\t\tLastOp: " + updateResult.lastOp + "\n", (err) => {
+            if (err) throw err;
+          })
+        fs.appendFile('realtimeScript/RealtimeScriptLogs.txt',
+          "\n", (err) => {
+            if (err) throw err;
+          })
+      });
+    })
 })
-
-app.post('/postThat', (req, res) => {
-  //code to perform particular action.
-  //To access POST variable use req.body()methods.
-  console.log(req.body);
-  client.connect(async (err, db) => {
-    let dbo = db.db("ate_model");
-    let bulk = dbo.collection("realtime_raw").initializeOrderedBulkOp();
-
-    for (let each of req.body) {
-      //find entry for trip
-      bulk.find({
-        "UUID": each.UUID
-      }).updateOne({
-        "$set": each
-      });
-      //Upsert entry for trip
-      bulk.find({
-        "UUID": each.UUID
-      }).upsert().updateOne({
-        "$setOnInsert": each
-      });
-    }
-    //Call execute
-    bulk.execute(function (err, updateResult) {
-      console.log(err, updateResult);
-      fs.appendFile('realtimeScript/RealtimeScriptLogs.txt',
-        new Date() + "\n" + "\tError:" + err + "\n" + "\tResults:\n" + "\t\tInserted: " + updateResult.nInserted + "\n" + "\t\tUpserted: " + updateResult.nUpserted + "\n" + "\t\tMatched: " + updateResult.nMatched + "\n" + "\t\tModified: " + updateResult.nModified + "\n" + "\t\tLastOp: " + updateResult.lastOp + "\n", (err) => {
-          if (err) throw err;
-        })
-      fs.appendFile('realtimeScript/RealtimeScriptLogs.txt',
-        "\n", (err) => {
-          if (err) throw err;
-        })
-    });
-  })
-});
 
 // add router in the Express app.
 // app.use("/postDat", router);
