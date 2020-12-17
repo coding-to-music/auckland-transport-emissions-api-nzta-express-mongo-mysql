@@ -1,8 +1,7 @@
 /**
- * Script to pull shapefiles from the AT API using trip_ids
+ * Script to pull scheduled times and stop sequences from the AT API using trip_ids
  * 
- * The distances of each trips is calculated from the shapefile.
- * The distances and shapefiles are posted to the mySQL database.
+ * Finds the number of stops, the start & end stop ids, and the scheduled time for the trip
  */
 
 //IMPORTS
@@ -59,7 +58,7 @@ async function main() {
     tripIDs = tripIDs.map( (d) => d.trip_id );
     // console.log(tripIDs);
 
-    // Use trip_ids 
+    // Use trip_ids to retrieve stop times 
     let dataArr = await retrieveStopData(tripIDs);
 
     let insertStatement = "INSERT INTO schedule_trips (trip_id, schedule_start_stop_id, schedule_end_stop_id, schedule_number_stops, schedule_time) VALUES ?" + 
@@ -68,7 +67,7 @@ async function main() {
 
     await postSQLData(insertStatement, dataArr);
 
-    // await postSQLData("show warnings;");
+    await postSQLData("show warnings;");
 
     pool.end( function (err) {
       if (err) {
@@ -84,20 +83,20 @@ async function retrieveStopData (allTripIDs) {
   let i = 0;
   let interval = 20;
   let sqlData = [];
-  // while (i < allTripIDs.length) {
-  while (i < 100) {
+  while (i < allTripIDs.length) {
+  // while (i < 100) { // For Debug purposes
     let endIndex = Math.min(i+interval, allTripIDs.length);
     let selectIDs = allTripIDs.slice(i, endIndex);
-    console.log(selectIDs[0]);
+    console.log(new Date + "   " + selectIDs[0] + "  " + i + " out of " + allTripIDs.length);
     let apiResponseArr = await getMultipleATAPI(selectIDs);
 
     apiResponseArr = apiResponseArr.map( (data) => data.response );
 
-    // console.log(apiResponseArr);
+    // console.log(apiResponseArr[0]);
 
     let formatData = formatStopResponse(apiResponseArr);
 
-    // console.log(formatData);
+    // console.log(formatData.length);
 
     formatData.map( (data) => sqlData.push(data) );
 
@@ -107,20 +106,36 @@ async function retrieveStopData (allTripIDs) {
   });
 }
 
-function getMultipleATAPI(retTripIDs) {
+async function getMultipleATAPI(retTripIDs) {
   let responseArr = [];
-  for (let i = 0; i < retTripIDs.length; i++) {
-    let data = setTimeout( () => fetch(url + retTripIDs[i], fetchConfig).then(response => response.json())
-    , 100);
-    responseArr.push(data);
-  }
+  let i = 0;
+  await new Promise( function(resolve) {
+    let cancelInt = setInterval(() => {
+      let data = fetch(url + retTripIDs[i], fetchConfig).then( (data) => data.json() );
+      responseArr.push(data);
+      i++;
+      if (i == retTripIDs.length) {
+        clearInterval(cancelInt);
+        resolve();
+      }
+    }, 150);
+  })
+
   // console.log(responseArr);
-  return Promise.all(responseArr);
+
+  let p = Promise.all(responseArr)
+
+  return p;
 }
 
 function formatStopResponse(responseArr) {
   responseArr = responseArr.map( function(stopTimes) {
     let id, noStops, startStop, endStop, scheduleTime;
+
+    if(stopTimes.length == 0) {
+      // console.log(stopTimes);
+      return null;
+    }
 
     id = stopTimes[0].trip_id;
 
@@ -135,7 +150,7 @@ function formatStopResponse(responseArr) {
     return [ id, startStop, endStop, noStops, scheduleTime];
   } );
   // console.log(responseArr)
-  return responseArr;
+  return responseArr.filter( (el) => el != null);
 };
 
 

@@ -23,13 +23,27 @@ var pool = mysql.createPool(connectionObject);
 
 let key = "99edd1e8c5504dfc955a55aa72c2dbac";
 
-let listOfURLS = ["https://api.at.govt.nz/v2/gtfs/trips", "https://api.at.govt.nz/v2/gtfs/routes", "https://api.at.govt.nz/v2/gtfs/shapes/tripId/"];
+let url = "https://api.at.govt.nz/v2/gtfs/shapes/tripId/";
 let operatorList = ["RTH", "HCE"];
+
+var fetchConfig = {
+  method: 'GET', // *GET, POST, PUT, DELETE, etc.
+  mode: 'cors', // no-cors, *cors, same-origin
+  cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+  credentials: 'same-origin', // include, *same-origin, omit
+  headers: {
+    'Content-Type': 'application/json',
+    "Ocp-Apim-Subscription-Key": key
+    // 'Content-Type': 'application/x-www-form-urlencoded',
+  },
+  redirect: 'follow', // manual, *follow, error
+  referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+  //body: JSON.stringify(data) // body data type must match "Content-Type" header
+};
 
 if (require.main === module) {
   main();
 }
-
 async function main() {
   // Response Variables
   let trips, routeInfo;
