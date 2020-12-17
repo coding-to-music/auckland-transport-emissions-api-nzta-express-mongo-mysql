@@ -15,9 +15,11 @@ let mysql = require("mysql");
 let connectionObject = {
   host: "localhost",
   user: "root",
-  password: "busemissions123",
+  password: " ",
   database: "localate"
 }
+
+var pool = mysql.createPool(connectionObject);
 
 let key = "99edd1e8c5504dfc955a55aa72c2dbac";
 
@@ -44,10 +46,10 @@ async function main() {
   console.log(trip_ids.length);
   // Loop commented out for now, the posts to the SQL db are inconsistent
   for (let i = 0; i < 100; i++) {
-    if (i%50 == 0) {console.log("Count: " + i);}
+    if (i%50 == 0) {console.log(new Date() + "  Count: " + i);}
     let id = trip_ids[i];
 
-    shape = await getATAPI(listOfURLS[2] + id);
+    let shape = await getATAPI(listOfURLS[2] + id);
     shape = shape.response;
 
     shapeFileSQL = formatShapeSQL(shape);
@@ -56,7 +58,7 @@ async function main() {
 
     let distance = calcShapeDist(shape);
 
-    console.log(distance);
+    // console.log(distance);
 
     let insertStatement = "INSERT INTO schedule_trips (trip_id, shape_id, distance) VALUES (?) " + 
                             "ON DUPLICATE KEY UPDATE `shape_id` = VALUES(`shape_id`), `distance` = VALUES(`distance`);";
@@ -116,23 +118,23 @@ function calcShapeDist(shape) {
 
 /* Method for posting formed arrays into mySQL tables */
 
-function postSQLData(insertStmt, data = null) {
-  let con = mysql.createConnection(connectionObject);
-  return new Promise( function (resolve) {
-    con.connect();
+function postSQLData(insertStmt, data, resendCount) {
+  return new Promise( function (resolve, reject) {
+    if(resendCount > 3) {
+      console.log(`Error in query or connection, exceeded ${resendCount} resends`);
+      return resolve();
+    }
 
-    con.query(insertStmt, [data], function (err, results, fields) {
+    pool.query(insertStmt, [data], function (err, results, fields) {
       if (err) {
           console.log(err.message);
-          con.end(errFunc);
           setTimeout(() => {
             console.log('resending query');
-            postSQLData(insertStmt, data).then( resolve );
+            postSQLData(insertStmt, data, resendCount + 1).then( resolve );
           }, 500);
       } else {
-          console.log("Row inserted: " + results.affectedRows);
-          console.log(results);
-          con.end(errFunc);
+          // console.log("Row inserted: " + results.affectedRows);
+          // console.log(results);
           resolve();
       }
     });
@@ -151,7 +153,7 @@ function errFunc (err) {
   
 async function getATAPI(url) {
 
-  console.log("Fetching data");
+  // console.log("Fetching data");
   const response = await fetch(url, {
     method: 'GET', // *GET, POST, PUT, DELETE, etc.
     mode: 'cors', // no-cors, *cors, same-origin
@@ -166,6 +168,6 @@ async function getATAPI(url) {
     referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
     //body: JSON.stringify(data) // body data type must match "Content-Type" header
   });
-  console.log("complete");
+  // console.log("complete");
   return response.json();  
 }

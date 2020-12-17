@@ -1,10 +1,10 @@
 let mysql = require("../node_modules/mysql");
 
 let connectionObject = {
-    host: "johnny.heliohost.org",
-    user: "chriswil_1",
-    password: "w5eiDgh@39GNmtA",
-    database: "chriswil_ate_model"
+    host: "localhost",
+    user: "root",
+    password: " ",
+    database: "localate"
   }
 
 var temp;
@@ -68,7 +68,7 @@ con.query("SELECT count(*) FROM schedule_trips;", function (err, results, fields
 //         console.log(results);
 // }});
 
-con.query("SELECT * FROM services LIMIT 10;", function (err, results, fields) {
+con.query("SELECT * FROM schedule_trips LIMIT 10;", function (err, results, fields) {
     if (err) {
         console.log(err.message);
     } else {
