@@ -6,11 +6,7 @@
 
 //IMPORTS
 const fetch = require('node-fetch');
-const geolib = require('geolib');
-let sqlManager = require('../SQLManagment.js');
-let sqlInstance = new sqlManager();
 let mysql = require("mysql");
-const { start } = require('repl');
 
 let connectionObject = {
   host: "localhost",
@@ -134,7 +130,7 @@ function formatStopResponse(responseArr) {
 
     if(stopTimes.length == 0) {
       // console.log(stopTimes);
-      return null;
+      return [ id, null, null, 0, 0];
     }
 
     id = stopTimes[0].trip_id;
@@ -149,8 +145,6 @@ function formatStopResponse(responseArr) {
 
     return [ id, startStop, endStop, noStops, scheduleTime];
   } );
-  // console.log(responseArr)
-  return responseArr.filter( (el) => el != null);
 };
 
 
@@ -166,6 +160,5 @@ function postSQLData(insertStmt, data) {
           resolve();
       }
     });
-
   })
 }
