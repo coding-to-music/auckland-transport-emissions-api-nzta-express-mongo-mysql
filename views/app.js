@@ -45,9 +45,9 @@ client.connect(async (err, db) => {
   })
   
   app.get("/completed_trips", async (req, res) => {
-    let dateToCheck = "20201217";
+    let dateToCheck = ["20201220", "20201221", "20201222"];
 
-    await collection.find({ "date": dateToCheck }, {}).toArray((err, docs) => {
+    await collection.find({ "date": { "$in": dateToCheck } }, {}).toArray((err, docs) => {
       if (err) throw err;
       console.log("Total: ", docs.length);
     })
@@ -55,7 +55,7 @@ client.connect(async (err, db) => {
     let query = {
       "UUID": { "$nin": [null] },
       "arrived?": { "$nin": [null] },
-      "date": { "$in": [dateToCheck] },
+      "date": { "$in": dateToCheck },
       "direction_id": { "$nin": [null] },
       "route_id": { "$nin": [null] },
       "start_time": { "$nin": [null] },
@@ -77,7 +77,7 @@ client.connect(async (err, db) => {
     let pipeline = [
       {
         "$match": {
-          "date": dateToCheck,
+          "date": { "$in": dateToCheck },
           "$or": [
             { "stop_id": { "$in": [null] } },
             { "stop_sequence": { "$in": [null] } },
@@ -93,8 +93,7 @@ client.connect(async (err, db) => {
     let pipeline2 = [
       {
         "$match": {
-          "date": dateToCheck,
-          // "stop_sequence" : 14,
+          "date": { "$in": dateToCheck },
           "$or": [
             { "stop_id": { "$in": [null] } },
             { "stop_sequence": { "$in": [null] } },
@@ -113,28 +112,69 @@ client.connect(async (err, db) => {
       // },
       {
         "$group": {
-          "_id": {
-            // "start_time" : "$start_time",
-            // "stop_sequence" : "$stop_sequence",
+          "_id": { 
             "stop_id": "$stop_id"
-          }
+          },
+          "count" : {"$sum" : 1},
+          "stop_time_arrival":  {"$push" : "$stop_time_arrival"},
+          "UUID":  {"$push" : "$UUID"}
         }
-      },
-      // {
-      //   "" : 
-      // }
+      }
     ]
 
-    await collection.aggregate(pipeline).toArray((err, docs) => {
+    let pipeline3 = [
+      // {
+      //   "$match": {
+      //     "date": { "$in": dateToCheck },
+      //   }
+      // },
+      {
+        "$group": {
+          "_id": { 
+            "UUID": "$UUID"
+          },
+          // "arrived?": { "$push": "$arrived" },
+          // "date": { "$push": "$date" },
+          "direction_id": { "$push": "$direction_id" },
+          "route_id": { "$push": "$route_id" },
+          "start_time": { "$push": "$start_time" },
+          "stop_id": { "$push": "$stop_id" },
+          "stop_sequence": { "$push": "$stop_sequence" },
+          "stop_time_arrival": { "$push": "$stop_time_arrival" },
+          // "trip_id": {"$push" : "$trip_id"},
+          // "vehicle_id" : {"$push" : "$vehicle_id"},
+          "count" : {"$sum" : 1},
+        }
+      },
+      {
+        "$match" : {
+          "count" : {"$gte" : 2},
+        }, 
+      },
+    ]
+
+    let options = {
+      allowDiskUse: 1
+    };
+
+    await collection.aggregate(pipeline, options).toArray((err, docs) => {
       if (err) throw err;
-      console.log("No stop time arrival: ", docs.length);
+      console.log("No missing some info: ", docs.length);
     })
 
-    await collection.aggregate(pipeline2).toArray((err, docs) => {
+    await collection.aggregate(pipeline2, options).toArray((err, docs) => {
       if (err) throw err;
-      console.log("Stop Sequence 14: ", docs.length);
-      res.send(docs);
+      console.log("No. unique combinations of missing stop info: ", docs.length);
+      console.log("Unique combinations: ");
+      console.log(docs);
     })
+
+    await collection.aggregate(pipeline3, options)
+      .toArray((err, docs) => {
+        if (err) throw err;
+        console.log(docs);
+        res.send(docs);
+      })
   })
 
   //Uses URL format string 
