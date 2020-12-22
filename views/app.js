@@ -43,6 +43,48 @@ client.connect(async (err, db) => {
         console.log(docs.length)
       })
   })
+
+  app.get('/test', async (req, res) => {
+    let UUID = "20201214-1126203252-20201205123725_v95.82";
+    //render page  
+      await collection.find({"UUID" : UUID}, {}).toArray(async function(err, results) {
+        if (err) throw err;
+        console.log(results);
+        let stop_time_arrival = {
+          "delay" : 1,
+          "time" : 1,
+          "uncertainty" : 1
+        }
+        let each = {
+          "UUID": results[0].UUID,
+          "arrived?": results[0].arrived,
+          "stop_id": results[0].stop_id,
+          "stop_sequence": results[0].stop_sequence,
+          "direction_id": results[0].direction_id,
+          "route_id": results[0].route_id,
+          "date": results[0].date,
+          "start_time": results[0].start_time,
+          "trip_id": results[0].trip_id,
+          "vehicle_id": results[0].vehicle_id
+        };
+
+        let bulk = dbo.collection("realtime_raw").initializeUnorderedBulkOp();
+        bulk.find({
+          "UUID": each.UUID
+        }).updateOne({
+          "$set": each
+        });
+
+        bulk.execute(async function (err, updateResult) {
+          if (err) throw err;
+          console.log(err, updateResult);
+          await collection.find({"UUID" : each.UUID}, {}).toArray(async function(err, results) {
+            if (err) throw err;
+            res.send(results);
+          })
+        })
+      })
+  })
   
   app.get("/completed_trips", async (req, res) => {
     let dateToCheck = ["20201220", "20201221", "20201222"];
