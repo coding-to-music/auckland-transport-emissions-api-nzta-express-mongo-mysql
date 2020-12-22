@@ -1,27 +1,36 @@
 //IMPORTS
+const config = require('../config.js')
+
 const fetch = require('../node_modules/node-fetch');
-const MongoClient = require('mongodb').MongoClient;
-const uri = "mongodb+srv://chris:YFwh2XjNZ2XY8cv9@cluster0.l7ehu.mongodb.net/ate_model?retryWrites=true&w=majority";
-const client = new MongoClient(uri, { useUnifiedTopology: true });
+const MongoClient = require('../node_modules/mongodb').MongoClient;
+const client = new MongoClient(config.mongodb.uri, { useUnifiedTopology: true });
 
 //FileSystem for logging
 const fs = require("fs");
 const logFilePath = "./realtimeScript/RealtimeScriptLogs.txt";
-if (fs.existsSync(logFilePath)) {
-  try {
-    fs.unlinkSync(logFilePath);
-  } catch (err) {
-    console.log(err);
-  }
-}
+const processId = makeid(10);
+// if (fs.existsSync(logFilePath)) {
+//   try {
+//     fs.unlinkSync(logFilePath);
+//   } catch (err) {
+//     console.log(err);
+//   }
+// }
 
 let key = "b9f2e4f0b5e140b79a698c0bb9298a7f";
 url = '', data = {};
 
-client.connect((err, db) => {
+client.connect(async (err, db) => {
+  // try {
+    if (err) throw err;
+    let indexes = await db.db("ate_model").collection("realtime_raw").createIndex({"UUID" : 1});
+    console.log(indexes);
     setInterval(() => callTripUpdates().then(data=> {
-    onDataReceieved(data, db);
-  }), 30000);
+      onDataReceieved(data, db); 
+    }), 30000);
+  // } finally {
+    // await client.close();
+  // }
 })
 
 async function onDataReceieved(data, db) {
@@ -31,13 +40,13 @@ async function onDataReceieved(data, db) {
 
     let arrived = null;
     if (d.trip_update.stop_time_update != undefined) {
-      arrived = d.trip_update.stop_time_update.arrival == undefined ? true : false;
-      let property = arrived === 0 ? "departure" : "arrival";
+      arrived = d.trip_update.stop_time_update.arrival === undefined ? false : true;
+      let property = arrived === false ? "departure" : "arrival";
       stop_time_arrival = d.trip_update.stop_time_update[property];
       stop_id = d.trip_update.stop_time_update.stop_id;
       stop_sequence = d.trip_update.stop_time_update.stop_sequence;
     }
-    
+
     direction_id = d.trip_update.trip.direction_id;
     route_id = d.trip_update.trip.route_id;
     date = d.trip_update.trip.start_date;
@@ -45,53 +54,67 @@ async function onDataReceieved(data, db) {
     trip_id = d.trip_update.trip.trip_id;
 
     vehicle_id = d.trip_update.vehicle != undefined ? d.trip_update.vehicle.id : null;
-    
-    return {
-      "UUID" : UUID, 
-      "arrived?" : arrived, 
-      "stop_time_arrival" : stop_time_arrival,
-      "stop_id" : stop_id, 
-      "stop_sequence" : stop_sequence, 
-      "direction_id" : direction_id, 
-      "route_id" : route_id, 
-      "date" : date, 
-      "start_time" : start_time, 
-      "trip_id" : trip_id, 
-      "vehicle_id" : vehicle_id
-    };
+
+    let r =
+      stop_time_arrival === undefined ? {
+        "UUID": UUID,
+        "arrived?": arrived,
+        "stop_id": stop_id,
+        "stop_sequence": stop_sequence,
+        "direction_id": direction_id,
+        "route_id": route_id,
+        "date": date,
+        "start_time": start_time,
+        "trip_id": trip_id,
+        "vehicle_id": vehicle_id
+      } :
+        {
+          "UUID": UUID,
+          "arrived?": arrived,
+          "stop_time_arrival": stop_time_arrival,
+          "stop_id": stop_id,
+          "stop_sequence": stop_sequence,
+          "direction_id": direction_id,
+          "route_id": route_id,
+          "date": date,
+          "start_time": start_time,
+          "trip_id": trip_id,
+          "vehicle_id": vehicle_id
+        };
+    return r;
   });
 
   let dbo = db.db("ate_model");
-  let bulk = dbo.collection("realtime_raw").initializeOrderedBulkOp();
+  let bulk = dbo.collection("realtime_raw").initializeUnorderedBulkOp();
 
-    for (let each of flat) {
-      //find entry for trip
-      bulk.find({
-        "UUID": each.UUID
-      }).updateOne({
-        "$set": each
-      });
-      //Upsert entry for trip
-      bulk.find({
-        "UUID": each.UUID
-      }).upsert().updateOne({
-        "$setOnInsert": each
-      });
-    }
-    //Call execute
-    bulk.execute(function (err, updateResult) {
-      console.log(err, updateResult);
-      fs.appendFile('realtimeScript/RealtimeScriptLogs.txt',
-        new Date() + "\n" + "\tError:" + err + "\n" + "\tResults:\n" + "\t\tInserted: " + updateResult.nInserted + "\n" + "\t\tUpserted: " + updateResult.nUpserted + "\n" + "\t\tMatched: " + updateResult.nMatched + "\n" + "\t\tModified: " + updateResult.nModified + "\n" + "\t\tLastOp: " + updateResult.lastOp + "\n", (err) => {
-          if (err) throw err;
-        })
-      fs.appendFile('realtimeScript/RealtimeScriptLogs.txt',
-        "\n", (err) => {
-            if (err) throw err;
-          })
-        
+  for (let each of flat) {
+    //find entry for trip
+    bulk.find({
+      "UUID": each.UUID
+    }).updateOne({
+      "$set": each
     });
-  // db.close();
+    //Upsert entry for trip
+    bulk.find({
+      "UUID": each.UUID
+    }).upsert().updateOne({
+      "$setOnInsert": each
+    });
+  }
+
+  //Call execute
+  bulk.execute(function (err, updateResult) {
+    if (err) throw err;
+    console.log(err, updateResult);
+    fs.appendFile('RealtimeScriptLogs2.txt',
+      new Date() + ", process: " + processId + "\n" + "\tError:" + err + "\n" + "\tResults:\n" + "\t\tInserted: " + updateResult.nInserted + "\n" + "\t\tUpserted: " + updateResult.nUpserted + "\n" + "\t\tMatched: " + updateResult.nMatched + "\n" + "\t\tModified: " + updateResult.nModified + "\n" + "\t\tLastOp: " + updateResult.lastOp + "\n", (err) => {
+        if (err) throw err;
+      })
+    fs.appendFile('RealtimeScriptLogs2.txt',
+      "\n", (err) => {
+        if (err) throw err;
+      })
+  })
 }
 
 async function callTripUpdates() {
@@ -222,4 +245,14 @@ function weight_factor(size, weight, passengerKm, serviceKm) {
     }
   
     return { 'empty': tareFactor, 'loaded': loadedfactor}
+}
+
+function makeid(length) {
+  var result           = '';
+  var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  var charactersLength = characters.length;
+  for ( var i = 0; i < length; i++ ) {
+     result += characters.charAt(Math.floor(Math.random() * charactersLength));
+  }
+  return result;
 }
