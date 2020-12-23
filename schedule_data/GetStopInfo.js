@@ -1,171 +1,159 @@
 /**
- * Script to pull shapefiles from the AT API using trip_ids
+ * Script to pull scheduled times and stop sequences from the AT API using trip_ids
  * 
- * The distances of each trips is calculated from the shapefile.
- * The distances and shapefiles are posted to the mySQL database.
+ * Finds the number of stops, the start & end stop ids, and the scheduled time for the trip
  */
 
 //IMPORTS
 const fetch = require('node-fetch');
-const geolib = require('geolib');
-let sqlManager = require('../SQLManagment.js');
-let sqlInstance = new sqlManager();
 let mysql = require("mysql");
 
 let connectionObject = {
   host: "localhost",
   user: "root",
-  password: "busemissions123",
+  password: " ",
   database: "localate"
 }
 
+var pool = mysql.createPool(connectionObject);
+
 let key = "99edd1e8c5504dfc955a55aa72c2dbac";
 
-let listOfURLS = ["https://api.at.govt.nz/v2/gtfs/trips", "https://api.at.govt.nz/v2/gtfs/routes", "https://api.at.govt.nz/v2/gtfs/shapes/tripId/"];
-let operatorList = ["RTH", "HCE"];
+let url = "https://api.at.govt.nz/v2/gtfs/stopTimes/tripId/";
+
+var fetchConfig = {
+  method: 'GET', // *GET, POST, PUT, DELETE, etc.
+  mode: 'cors', // no-cors, *cors, same-origin
+  cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+  credentials: 'same-origin', // include, *same-origin, omit
+  headers: {
+    'Content-Type': 'application/json',
+    "Ocp-Apim-Subscription-Key": key
+    // 'Content-Type': 'application/x-www-form-urlencoded',
+  },
+  redirect: 'follow', // manual, *follow, error
+  referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+  //body: JSON.stringify(data) // body data type must match "Content-Type" header
+};
+
+var insertStatement = "INSERT INTO schedule_trips (trip_id, schedule_start_stop_id, schedule_end_stop_id, schedule_number_stops, schedule_time) VALUES ?" + 
+"ON DUPLICATE KEY UPDATE `schedule_start_stop_id` = VALUES(`schedule_start_stop_id`), `schedule_end_stop_id` = VALUES(`schedule_end_stop_id`)," +
+"`schedule_number_stops` = VALUES(`schedule_number_stops`), `schedule_time` = VALUES(`schedule_time`);";
 
 if (require.main === module) {
   main();
 }
 
 async function main() {
-  // Response Variables
-  let trips, routeInfo;
+  // Find trip IDs without stop information
+  let tripSelectStm = 'SELECT trip_id FROM schedule_trips WHERE schedule_time IS NULL;';
 
-  // retrieveData
-  trips = await getATAPI(listOfURLS[0]);
-  routeInfo = await getATAPI(listOfURLS[1]);
+  pool.query(tripSelectStm, async function(err, results) {
+    if (err) {
+      console.log(err.message);
+      console.log("Exiting script");
+      return;
+    } 
+    let tripIDs = results;
+    tripIDs = tripIDs.map( (d) => d.trip_id );
+    // console.log(tripIDs);
 
-  routeInfo = routeInfo.response.filter( route => operatorList.includes(route.agency_id) );
-  let filteredRouteIDs = routeInfo.map( route => route.route_id );
-  trips = trips.response.filter( trip => filteredRouteIDs.includes(trip.route_id) );
-  let trip_ids = trips.map( trip => trip.trip_id );
+    // Use trip_ids to retrieve stop times 
+    await retrievePostStopData(tripIDs);
 
-  console.log(trip_ids.length);
-  // Loop commented out for now, the posts to the SQL db are inconsistent
-  for (let i = 0; i < 100; i++) {
-    if (i%50 == 0) {console.log("Count: " + i);}
-    let id = trip_ids[i];
-
-    shape = await getATAPI(listOfURLS[2] + id);
-    shape = shape.response;
-
-    shapeFileSQL = formatShapeSQL(shape);
-
-    await postSQLData(shapeFileSQL);
-
-    let distance = calcShapeDist(shape);
-
-    console.log(distance);
-
-    let insertStatement = "INSERT INTO schedule_trips (trip_id, shape_id, distance) VALUES (?) " + 
-                            "ON DUPLICATE KEY UPDATE `shape_id` = VALUES(`shape_id`), `distance` = VALUES(`distance`);";
-
-    await postSQLData(insertStatement, [id, shape[0].shape_id, distance]);
-  }
-
-  // let doubleCheck = "SELECT * FROM `shapes` WHERE `shape_id` = '" + shape[0].shape_id + "'";
-
-  // let con = mysql.createConnection(connectionObject);
-  // con.connect();
-
-  // con.query(doubleCheck, function (err, results, fields) {
-  //   if (err) {
-  //       console.log(err.message);
-  //   } else {
-  //       console.log("execute results: ");
-  //       console.log(results);
-  // }});
-
-  // con.end(function (err) {
-  //   if (err) {
-  //       return console.log(err.message);
-  //   }
-  // });
+    pool.end( function (err) {
+      if (err) {
+        console.log(err.message);
+      } 
+    })
+  });
 }
 
 
+async function retrievePostStopData (allTripIDs) {
+  return new Promise( async function (resolve, reject) {
+  let i = 0;
+  let interval = 25;
+  while (i < allTripIDs.length) {
+  // while (i < 100) { // For Debug purposes
+    let endIndex = Math.min(i+interval, allTripIDs.length);
+    let selectIDs = allTripIDs.slice(i, endIndex);
+    console.log(new Date + "   " + selectIDs[0] + "  " + i + " out of " + allTripIDs.length);
+    let apiResponseArr = await getMultipleATAPI(selectIDs);
 
-function formatShapeSQL(shape) {
-  let dataStr = "('" + shape[0].shape_id + "', '[";
+    apiResponseArr = apiResponseArr.map( (data) => data.response );
 
-  for (let i = 0; i < shape.length; i++) {
-    dataStr += "{\"lat\":\"" + shape[i].shape_pt_lat + "\",\"lon\":\"" + shape[i].shape_pt_lon + "\"},"
+    // console.log(apiResponseArr[0]);
+
+    let formattedData = formatStopResponse(apiResponseArr);
+
+    console.log(formattedData.length + "/" + apiResponseArr.length + " non-empty arrays received");
+
+    await postSQLData(insertStatement, formattedData);
+
+    i += interval;
   }
-
-  let sqlString = "INSERT INTO shapes (shape_id, shape_path) VALUES " +
-                    dataStr.slice(0, dataStr.length-1) +
-                    "]') ON DUPLICATE KEY UPDATE `shape_path` = VALUES(`shape_path`)";
-  
-  return sqlString;
+  resolve();
+  });
 }
 
+async function getMultipleATAPI(retTripIDs) {
+  let responseArr = [];
+  let i = 0;
+  await new Promise( function(resolve) {
+    let cancelInt = setInterval(() => {
+      let data = fetch(url + retTripIDs[i], fetchConfig).then( (data) => data.json() );
+      responseArr.push(data);
+      i++;
+      if (i == retTripIDs.length) {
+        clearInterval(cancelInt);
+        resolve();
+      }
+    }, 150);
+  })
 
-function calcShapeDist(shape) {
-  let distance = 0;
-  let lonA, latA, lonB, latB;
-  for (let i = 0; i < shape.length - 1; i++) {
-    lonA = shape[i].shape_pt_lon;
-    latA = shape[i].shape_pt_lat;
-    lonB = shape[i+1].shape_pt_lon;
-    latB = shape[i+1].shape_pt_lat;
-    distance += geolib.getDistance([lonA, latA], [lonB, latB]);
-  }
-  return distance;
+  // console.log(responseArr);
+
+  let p = Promise.all(responseArr)
+
+  return p;
 }
+
+function formatStopResponse(responseArr) {
+  responseArr = responseArr.map( function(stopTimes) {
+    let id, noStops, startStop, endStop, scheduleTime;
+    if(stopTimes.length == 0) {
+      // console.log(stopTimes);
+      return [ id, null, null, -1, -1];
+    }
+
+    id = stopTimes[0].trip_id;
+
+    noStops = stopTimes.length;
+
+    startStop = stopTimes[0].stop_id;
+
+    endStop = stopTimes[noStops - 1].stop_id;
+
+    scheduleTime = stopTimes[noStops - 1].arrival_time_seconds - stopTimes[0].departure_time_seconds;
+
+    return [ id, startStop, endStop, noStops, scheduleTime];
+  } );
+  return responseArr;
+};
+
 
 /* Method for posting formed arrays into mySQL tables */
 
-function postSQLData(insertStmt, data = null) {
-  let con = mysql.createConnection(connectionObject);
-  return new Promise( function (resolve) {
-    con.connect();
-
-    con.query(insertStmt, [data], function (err, results, fields) {
+function postSQLData(insertStmt, data) {
+  return new Promise( function (resolve, reject) {
+    pool.query(insertStmt, [data], function (err, results, fields) {
       if (err) {
           console.log(err.message);
-          con.end(errFunc);
-          setTimeout(() => {
-            console.log('resending query');
-            postSQLData(insertStmt, data).then( resolve );
-          }, 500);
       } else {
-          console.log("Row inserted: " + results.affectedRows);
           console.log(results);
-          con.end(errFunc);
           resolve();
       }
     });
-
   })
-}
-
-function errFunc (err) {
-  if (err) {
-    console.log(err.message);
-  }
-}
-
-
-/* Function for retrieving data from AT developers API */
-  
-async function getATAPI(url) {
-
-  console.log("Fetching data");
-  const response = await fetch(url, {
-    method: 'GET', // *GET, POST, PUT, DELETE, etc.
-    mode: 'cors', // no-cors, *cors, same-origin
-    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
-    credentials: 'same-origin', // include, *same-origin, omit
-    headers: {
-      'Content-Type': 'application/json',
-      "Ocp-Apim-Subscription-Key": key
-      // 'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    redirect: 'follow', // manual, *follow, error
-    referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
-    //body: JSON.stringify(data) // body data type must match "Content-Type" header
-  });
-  console.log("complete");
-  return response.json();  
 }

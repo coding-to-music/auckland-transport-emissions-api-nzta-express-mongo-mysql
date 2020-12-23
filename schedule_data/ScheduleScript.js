@@ -21,7 +21,7 @@ let mysql = require("../node_modules/mysql");
 let connectionObject = {
   host: "localhost",
   user: "root",
-  password: "busemissions123",
+  password: " ",
   database: "localate"
 }
 
@@ -52,11 +52,6 @@ async function main() {
   calendar = await getATAPI(listOfURLS[2]);
   calendarExceptions = await getATAPI(listOfURLS[3]);
 
-  // console.log(trips.response[0]);
-  // console.log(routeInfo.response[0]);
-  // console.log(calendar.response[0]);
-  // console.log(calendarExceptions.response[0]);
-
   // Filtering
 
   routeInfo = routeInfo.response.filter( route => operatorList.includes(route.agency_id) );
@@ -64,75 +59,85 @@ async function main() {
   trips = trips.response.filter( trip => filteredRouteIDs.includes(trip.route_id) );
   let filteredServiceIDs = trips.map( trip => trip.service_id );
   calendar = calendar.response.filter( service => filteredServiceIDs.includes(service.service_id) );
-  calendarExceptions = calendarExceptions.response.filter( service => filteredServiceIDs.includes(service.service_id) ); 
+  // calendarExceptions = calendarExceptions.response.filter( service => filteredServiceIDs.includes(service.service_id) ); 
+
+  console.log(trips.length);
+  console.log(routeInfo.length);
+  console.log(calendar.length);
+  // console.log(calendarExceptions.response.length);
+
+  // Checking valid dates in trips
+
+  console.log(trips[0]);
+  console.log(calendar[0]);
+
+  let dateCounts = {};
+  let startEndPairs = new Set();
+
+  for (let trip of trips) {
+    let service_id = trip.service_id;
+    for (let service of calendar) {
+      if (service.service_id == service_id) {
+        let date_end = service.end_date;
+        if (dateCounts[date_end] == undefined) {
+          dateCounts[date_end] = 0;
+        }
+        dateCounts[date_end] += 1;
+        let startEnd = service.start_date.slice(0,10) + "  --  " + date_end.slice(0,10);
+        startEndPairs.add(startEnd);
+        continue;
+      }
+    }
+  }
+
+  console.log(dateCounts);
+  console.log(startEndPairs);
 
   
 
   // Process into valid form
 
   let routeInsert = flattenRoute(routeInfo);
-  let shapeInsert = trips.map( trip => [trip.shape_id, null] );
   let tripInsert = flattenTrips(trips);
   let calendarInsert = flattenCalendar(calendar);
   let exceptionsInsert = flattenExceptions(calendarExceptions);
 
-  let shape_id_set = new Set();
-  shapeInsert.map( (d) => shape_id_set.add(d));
 
-  console.log(routeInfo.length, trips.length, calendar.length, calendarExceptions.length, shapeInsert.length, shape_id_set.size)
+  // console.log(routeInsert[0]);
+  // console.log(tripInsert[0]);
+  // console.log(calendarInsert[0]);
+  // console.log(exceptionsInsert[0]);
 
   // Post to mySql
 
-  // let sqlInsert = "replace into routes (route_id, agency_id, route_short_name, route_long_name) VALUES ? ";
-  // await postSQLData(sqlInsert, routeInsert, 0);
+  console.log("Posting routes");
+  let sqlInsert = "INSERT IGNORE INTO routes (route_id, agency_id, route_short_name, route_long_name) VALUES ? ";
+  await postSQLData(sqlInsert, routeInsert, 0);
 
-  // sqlInsert = "replace into shapes (shape_id, shape_path) VALUES ? ";
-  // await postSQLData(sqlInsert, shapeInsert, 0);
+  console.log("Posting services");
+  sqlInsert = "INSERT IGNORE INTO services (service_id, mon, tue, wed, thu, fri, sat, sun, date_start, date_end, date_exceptions) VALUES ? ";
+  await postSQLData(sqlInsert, calendarInsert, 0);
 
-  // sqlInsert = "replace into services (service_id, mon, tue, wed, thu, fri, sat, sun, date_start, date_end, date_exceptions) VALUES ? ";
-  // await postSQLData(sqlInsert, calendarInsert, 0);
+  console.log("Posting trips");
+  sqlInsert = "INSERT IGNORE INTO schedule_trips (trip_id, route_id, shape_id, service_id, schedule_start_stop_id, schedule_end_stop_id, schedule_number_stops, schedule_time, distance) VALUES ? ";
+  await postSQLData(sqlInsert, tripInsert, 0);
 
-  // sqlInsert = "replace into schedule_trips (trip_id, route_id, shape_id, service_id, schedule_start_stop_id, schedule_end_stop_id, schedule_number_stops, schedule_time, distance) VALUES ? ";
-  // await postSQLData(sqlInsert, tripInsert, 0);
+  let dataStr = "";
 
-  // let dataStr = "";
+  console.log("Posting date exceptions");
+  for (let i = 0; i < exceptionsInsert[0].length; i++) {
+    dataStr += "('"+exceptionsInsert[0][i]+ "', '" +JSON.stringify(exceptionsInsert[1][i]) + "'), "
+  }
 
-  // for (let i = 0; i < exceptionsInsert[0].length; i++) {
-  //   dataStr += "('"+exceptionsInsert[0][i]+ "', '" +JSON.stringify(exceptionsInsert[1][i]) + "'), "
-  // }
+  let sqlString = "INSERT INTO services (service_id, date_exceptions) VALUES " +
+                    dataStr.slice(0, dataStr.length-2) +
+                    " ON DUPLICATE KEY UPDATE `date_exceptions` = VALUES(`date_exceptions`)";
 
-  // console.log(dataStr.slice(0,250));
+  await postSQLData(sqlString, null, 0);
 
-  // let sqlString = "INSERT INTO services (service_id, date_exceptions) VALUES " +
-  //                   dataStr.slice(0, dataStr.length-2) +
-  //                   " ON DUPLICATE KEY UPDATE `date_exceptions` = VALUES(`date_exceptions`)";
 
-  // let doubleCheck = "SELECT * FROM `services` WHERE `service_id` = '1085195742-20201205123725_v95.82'";
+  // Check that trip records from the API haven't had altered field values
 
-  // let con = mysql.createConnection(connectionObject);
-  // con.connect();
-
-  // con.query(sqlString, function (err, results, fields) {
-  //   if (err) {
-  //       console.log(err.message);
-  //   } else {
-  //       console.log("execute results: ");
-  //       console.log(results);
-  // }});
-
-  // con.query(doubleCheck, function (err, results, fields) {
-  //   if (err) {
-  //       console.log(err.message);
-  //   } else {
-  //       console.log("execute results: ");
-  //       console.log(results);
-  // }});
-
-  // con.end(function (err) {
-  //   if (err) {
-  //       return console.log(err.message);
-  //   }
-  // });
 
 }
 
@@ -160,7 +165,7 @@ function flattenTrips(scheduledTrips) {
 
     trip_id = trip.trip_id;
     route_id = trip.route_id;
-    shape_id = trip.shape_id;
+    shape_id = null;
     service_id = trip.service_id;
     start_stop = null;
     end_stop = null;
@@ -205,8 +210,6 @@ function flattenExceptions(serviceExceptions) {
     dateExceptions[service_id].push(data.date.slice(0,10));
   });
   
-  // let exceptionArray = Object.values(dateExceptions).map(d => {"dates" : d});
-  //return [ Object.keys(dateExceptions), exceptionArray ]
   return [ Object.keys(dateExceptions), Object.values(dateExceptions) ]
 }
 
@@ -216,20 +219,13 @@ function flattenExceptions(serviceExceptions) {
 function postSQLData(insertStmt, data, resendCount) {
   let con = mysql.createConnection(connectionObject);
   return new Promise( function (resolve, reject) {
-    if(resendCount > 3) {
-      console.log("Error in query or connection, exceeded 3 resends");
-      return resolve();
-    }
     con.connect();
 
     con.query(insertStmt, [data], function (err, results, fields) {
       if (err) {
           console.log(err.message);
           con.end(errFunc);
-          setTimeout(() => {
-            console.log('resending query');
-            postSQLData(insertStmt, data, resendCount + 1).then( resolve );
-          }, 500);
+          resolve();
       } else {
           console.log("Row inserted: " + results.affectedRows);
           console.log(results);
@@ -237,9 +233,36 @@ function postSQLData(insertStmt, data, resendCount) {
           resolve();
       }
     });
-
   })
 }
+
+// function postSQLData(insertStmt, data, resendCount) {
+//   let con = mysql.createConnection(connectionObject);
+//   return new Promise( function (resolve, reject) {
+//     if(resendCount > 3) {
+//       console.log(`Error in query or connection, exceeded ${resendCount} resends`);
+//       return resolve();
+//     }
+//     con.connect();
+
+//     con.query(insertStmt, data, function (err, results, fields) {
+//       if (err) {
+//           console.log(err.message);
+//           con.end(errFunc);
+//           setTimeout(() => {
+//             console.log('resending query');
+//             postSQLData(insertStmt, [data], resendCount + 1).then( resolve );
+//           }, 500);
+//       } else {
+//           console.log("Row inserted: " + results.affectedRows);
+//           console.log(results);
+//           con.end(errFunc);
+//           resolve();
+//       }
+//     });
+
+//   })
+// }
 
 function errFunc (err) {
   if (err) {

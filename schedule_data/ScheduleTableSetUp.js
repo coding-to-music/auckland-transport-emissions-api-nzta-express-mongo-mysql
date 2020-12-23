@@ -4,7 +4,7 @@ let mysql = require("../node_modules/mysql");
 let connectionObject = {
     host: "localhost",
     user: "root",
-    password: "busemissions123",
+    password: " ",
     database: "localate"
   }
 
@@ -18,7 +18,7 @@ let createScheduleTrip = `create table if not exists schedule_trips(
     schedule_start_stop_id varchar(255),
     schedule_end_stop_id varchar(255),
     schedule_number_stops int,
-    schedule_time TIME,
+    schedule_time int,
     distance int,
     constraint FK_route FOREIGN KEY (route_id) REFERENCES routes(route_id),
     constraint FK_shape FOREIGN KEY (shape_id) REFERENCES shapes(shape_id),
