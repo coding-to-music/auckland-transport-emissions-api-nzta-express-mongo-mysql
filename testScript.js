@@ -1,73 +1,60 @@
-let sqlManager = require('./SQLManagment.js');
-let sqlInstance = new sqlManager();
-let mysql = require("mysql");
+//IMPORTS
+const config = require('./config.js')
 
-let connectionObject = {
-    connectionLimit: 10000,
-    host: "johnny.heliohost.org",
-    user: "chriswil_1",
-    password: "w5eiDgh@39GNmtA",
-    database: "chriswil_ate_model"
+const fetch = require('./node_modules/node-fetch');
+const SQLManagement = require("./SQLManagment.js");
+const SQLPool = new SQLManagement();
+
+const MongoClient = require('./node_modules/mongodb').MongoClient;
+const client = new MongoClient(config.mongodb.uri, { useUnifiedTopology: true });
+
+let urls = ["https://api.at.govt.nz/v2/gtfs/trips", "https://api.at.govt.nz/v2/gtfs/agency", "https://api.at.govt.nz/v2/gtfs/calendar", "https://api.at.govt.nz/v2/gtfs/routes", "https://api.at.govt.nz/v2/gtfs/stops", "https://api.at.govt.nz/v2/gtfs/versions"]
+
+exec();
+
+async function exec() {
+    client.connect(async (err, db) => {
+      if (err) throw err;
+      for (let url of urls) {
+        let collectionName = url.split("/")[url.split("/").length - 1];
+        let indexName = collectionName[collectionName.length - 1] === "s" ? `${collectionName.substring(0, collectionName.length - 1)}_id` : `${collectionName}_id`;
+        // await db.db("ate_model").collection(collectionName).createIndex({indexName : 1}, {unique:true});
+        // callTripUpdates(url).then(data=> {
+        //   postToMongo(db, data.response, url);
+        // })
+      }
+    });
 }
 
-test();
+async function postToMongo(db, data, url) {
+  console.log(data);
+      let collectionName = url.split("/")[url.split("/").length - 1];
+      await db.db("ate_model").collection(collectionName).drop((err, results) => {
+        if (err) throw err;
+        console.log(results);
+      });
+      await db.db("ate_model")
+        .collection(collectionName)
+        .insertMany(data, function(err, results) {
+          if (err) throw err;
+          console.log(collectionName, results);
+        });
+}
 
-async function test() {
-  let pool = mysql.createPool(connectionObject);
-  //   pool.connect();
-
-  // pool.query("set profiling=1;", function (err, results) {
-  //   if (err) throw err;
-  //   console.log(results);
-  // });
-
-  // pool.query("SELECT * FROM realtime_raw;", function (err, results) {
-  //   if (err) throw err;
-  //   console.log(results);
-  // });
-
-  // pool.query("show profiles;", function (err, results) {
-  //   if (err) throw err;
-  //   console.log(results);
-  // });
-
-
-//   con.query("DESCRIBE info;", function(err, results, fields) {
-    // if (err) throw err;
-    // console.log(results);
-//   })
-  // pool.setMaxListeners(0);
-  let p = pool.query("show status like 'Conn%';", function(err, results, fields) {
-    if (err) throw err;
-    console.log(results);
-  })
-  let p1 = pool.query("show global variables like '%connections%';", function(err, results, fields) {
-    if (err) throw err;
-    console.log(results);
-  })
-  let p2 = pool.query("show status like '%connected%';", function(err, results, fields) {
-    if (err) throw err;
-    console.log(results);
-  })
-  let p3 = pool.query("SELECT * FROM realtime_raw;", function(err, results, fields) {
-    if (err) throw err;
-    console.log(results);
-  })
-  console.log(p);
-  console.log(p1);
-  console.log(p2);
-  // let SQLManagment = require("./SQLManagment");
-  // let p = new SQLManagment();
-  // let p =  pool.getConnection(function (err, con) {
-  //     if (err) throw err;
-  //     console.log(con);
-  //   })
-  // for (let i = 0; i < 10; i++) {
-  //   pool.executeQuery("INSERT realtime_raw (stop_time) VALUES ?", [[[1]]], function (err, data) {
-  //     // if (err) throw err;
-  //     console.log(data);
-  //     // res(data);
-  //   })
-  // }
-//   con.end();
+async function callTripUpdates(url) {
+  const response = await fetch(url, {
+    method: 'GET', // *GET, POST, PUT, DELETE, etc.
+    mode: 'cors', // no-cors, *cors, same-origin
+    cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+    credentials: 'same-origin', // include, *same-origin, omit
+    headers: {
+      'Content-Type': 'application/json',
+      "Ocp-Apim-Subscription-Key": "b9f2e4f0b5e140b79a698c0bb9298a7f"
+      // 'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    redirect: 'follow', // manual, *follow, error
+    referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+    //body: JSON.stringify(data) // body data type must match "Content-Type" header
+  });
+  return response.json(); 
 }

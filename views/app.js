@@ -10,6 +10,9 @@ const router = express.Router();
 const path = require('path');
 
 //DB IMPORTS
+const SQLManagement = require("../SQLManagment.js");
+const SQLPool = new SQLManagement();
+
 const MongoClient = require('../node_modules/mongodb').MongoClient;
 const client = new MongoClient(config.mongodb.uri, { useUnifiedTopology: true });
 
@@ -24,12 +27,61 @@ client.connect(async (err, db) => {
   let dbo = db.db("ate_model");
   let collection = dbo.collection("realtime_raw");
 
-  app.get('/', (req, res) => {
+  app.get('/', async (req, res) => {
     //render page
     console.log("Yeow, we running bruh dew.");
+
+    await SQLPool.getConnection(async (err, result) => {
+      if (err) throw err;
+      console.log(result);
+      await SQLPool.executeQuery("SELECT * FROM schedule_trips;", (err, results) => {
+        console.log(results);
+      })
+    });
+
     res.sendFile(path.join(__dirname + "/index/index.html"));
   })
   
+  //Auto generate valid trips from realtime_raw 
+  app.get('/compare', async (req, res) => {  
+    let dateToCheck = formDateArray();
+    console.log("dates", dateToCheck);
+    let trips = dbo.collection("realtime_raw");
+
+    let lookup = [
+      {
+        "$match" : {
+          'date' : {"$in" : dateToCheck}
+        }
+      },
+      {
+        "$lookup" : {
+          "from" : "routes",
+          "localField" : "route_id",
+          "foreignField" : "route_id",
+          "as" : "raw_w_route_id"
+        }
+      },
+      {
+        "$match" : {
+          "raw_w_route_id.0.agency_id" : {"$in" : ["RTH", "HE", "GBT"]}
+        }
+      },
+      {
+        "$out" : "raw_w_routes"
+      }
+    ]
+
+    let options = {
+      allowDiskUse: 1
+    };
+    
+    await trips.aggregate(lookup, options).toArray((err, docs) => {
+      if (err) throw err;
+      console.log("Result: ", docs);
+    })
+  })
+
   app.get('/distinct', async (req, res) => {
     //render page  
       await collection.distinct("UUID", {}, {}, function(err, results) {
@@ -87,13 +139,17 @@ client.connect(async (err, db) => {
   })
   
   app.get("/completed_trips", async (req, res) => {
-    let dateToCheck = ["20201220", "20201221", "20201222"];
+    let dateToCheck = formDateArray();
 
+    collection = dbo.collection("raw_w_routes");
+
+    //Check no. journeys in range
     await collection.find({ "date": { "$in": dateToCheck } }, {}).toArray((err, docs) => {
       if (err) throw err;
       console.log("Total: ", docs.length);
     })
 
+    //Check no. journeys complete in range
     let query = {
       "UUID": { "$nin": [null] },
       "arrived?": { "$nin": [null] },
@@ -110,12 +166,12 @@ client.connect(async (err, db) => {
       "trip_id": { "$nin": [null] },
       "vehicle_id": { "$nin": [null] },
     }
-    
     await collection.find(query, {}).toArray((err, docs) => {
       if (err) throw err;
       console.log("Complete: ", docs.length);
     })
 
+    //Find all entries with no stop informatio
     let pipeline = [
       {
         "$match": {
@@ -132,6 +188,9 @@ client.connect(async (err, db) => {
       }
     ]
 
+    //Find all entries with no stop information then group by the missing stop id,
+    //join to routes collection to include provider information and pipe to collection
+    //on db
     let pipeline2 = [
       {
         "$match": {
@@ -146,12 +205,6 @@ client.connect(async (err, db) => {
           ]
         }
       },
-      // {
-      //   "$project" : {
-      //       "start_time" : 1,
-      //       "date" : 1,
-      //   }
-      // },
       {
         "$group": {
           "_id": { 
@@ -159,40 +212,21 @@ client.connect(async (err, db) => {
           },
           "count" : {"$sum" : 1},
           "stop_time_arrival":  {"$push" : "$stop_time_arrival"},
-          "UUID":  {"$push" : "$UUID"}
+          "UUID":  {"$push" : "$UUID"},
+          "route_id" : {"$push" : "$route_id"}
         }
+      },
+      {
+        "$lookup" : {
+          "from" : "routes",
+          "localField" : "route_id",
+          "foreignField" : "route_id",
+          "as" : "routes"
+        }
+      },
+      {
+        "$out" : "invalid_trips_buffer"
       }
-    ]
-
-    let pipeline3 = [
-      // {
-      //   "$match": {
-      //     "date": { "$in": dateToCheck },
-      //   }
-      // },
-      {
-        "$group": {
-          "_id": { 
-            "UUID": "$UUID"
-          },
-          // "arrived?": { "$push": "$arrived" },
-          // "date": { "$push": "$date" },
-          "direction_id": { "$push": "$direction_id" },
-          "route_id": { "$push": "$route_id" },
-          "start_time": { "$push": "$start_time" },
-          "stop_id": { "$push": "$stop_id" },
-          "stop_sequence": { "$push": "$stop_sequence" },
-          "stop_time_arrival": { "$push": "$stop_time_arrival" },
-          // "trip_id": {"$push" : "$trip_id"},
-          // "vehicle_id" : {"$push" : "$vehicle_id"},
-          "count" : {"$sum" : 1},
-        }
-      },
-      {
-        "$match" : {
-          "count" : {"$gte" : 2},
-        }, 
-      },
     ]
 
     let options = {
@@ -210,13 +244,6 @@ client.connect(async (err, db) => {
       console.log("Unique combinations: ");
       console.log(docs);
     })
-
-    await collection.aggregate(pipeline3, options)
-      .toArray((err, docs) => {
-        if (err) throw err;
-        console.log(docs);
-        res.send(docs);
-      })
   })
 
   //Uses URL format string 
@@ -271,6 +298,14 @@ client.connect(async (err, db) => {
 app.listen(config.port, () => {
   console.log(`Express App running at http://localhost:${config.port}`);
 })
+
+function formDateArray() {
+  let dates = [];
+  for (let d = new Date(2020, 11, 22); d < new Date(); d.setDate(d.getDate() + 1)) {
+    dates.push(d.getFullYear() + "" + (d.getMonth() + 1) + "" + d.getDate());
+  }
+  return dates;
+}
 
 function formGetQuery(endpoint, args) {
   let string = config.host;

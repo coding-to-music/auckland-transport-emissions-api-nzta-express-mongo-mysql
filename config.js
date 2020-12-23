@@ -5,8 +5,10 @@ config.port = 3000;
 config.host = "localhost:" + config.port + "/";
 
 config.heliohost = {};
+config.heliohost.host = "johnny.heliohost.org";
 config.heliohost.user = "chriswil_c";
 config.heliohost.password = "w5eiDgh@39GNmtA";
+config.heliohost.database = "chriswil_ate_model";
 
 //MONGO
 config.mongodb = {};

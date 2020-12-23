@@ -1,28 +1,36 @@
 // let pool = require("../DB");
 let mysql = require("mysql");
+const config = require("./config.js");
 
 module.exports = function (conObj) {
     this.pool = conObj ? mysql.createPool(conObj) : mysql.createPool({
-        host: "localhost:3306",
-        user: "c",
-        password: ""
-        //"w5eiDgh@39GNmtA",
-        //database: "chriswil_ate_model"
+        host: config.heliohost.host,
+        user: config.heliohost.user,
+        password: config.heliohost.password,
+        database: config.heliohost.database        
       });
     this.data;
 
     this.getConnection = function(callback) {
         this.pool.getConnection(function(err, connection) {
             if (err) {
-                // console.log(chalk.bgYellow.bold('Warning:') + ' Cannot connect to the MySQL server. Error Code: ' + error.code);
                 throw err;
             } else {
                 console.log(connection);
-                // console.log(chalk.bgYellow.bold('Warning:') + ' Cannot connect to the MySQL server. Error Code: ' + error.code);
                 callback(null, connection);
             }
         });
     };
+
+    this.query=function( sql, args ) {
+        return new Promise( ( resolve, reject ) => {
+            this.pool.query( sql, args, ( err, rows ) => {
+                if ( err )
+                    return reject( err );
+                resolve( rows );
+            } );
+        } );
+    }
 
     this.executeQuery=function(query,args,callback){
         if (args == null) {
@@ -41,30 +49,12 @@ module.exports = function (conObj) {
                     console.log("Error executing query " + query);
                     throw err
                 };
-                console.log("Query : " + results);
-                callback(null, results);
+                console.log("Query : ");
+                console.log(results);
+                console.log(callback);
+                // callback(null, results);
             });
         }        
-    }
-
-    this.passToSQL = async function () {
-
-        //Write some query fekkin things
-
-        //save
-
-        //write queries
-
-        //getsomeofthethings
-
-        //createEmissions
-
-        //repost?
-
-    }
-
-    this.createStatement = function() {
-
     }
 
     this.insertStatement = async function(sqlStatement, args) {
@@ -78,24 +68,11 @@ module.exports = function (conObj) {
         })
     }
 
-    this.updateStatement = function() {
-
-    }
-
-    this.selectStatement = async function() {
-        
-    }
-
-    this.formQuery = function (command, table, whereConds) {
-        
-    }
-
     this.filterData = function (filterFunction) {
         data.filter(filterFunction);
     }
 
     this.execute = function (sqlStatement) {
-        // new Promise((resolve, rej) => {
             pool.query(sqlStatement, function (err, results, fields) {
                 if (err) {
                     console.log(err.message);
@@ -106,8 +83,6 @@ module.exports = function (conObj) {
                     // return results;
                 }
             })
-        // })
-        // return r;
     }
 
     this.closeConnection = function() {
