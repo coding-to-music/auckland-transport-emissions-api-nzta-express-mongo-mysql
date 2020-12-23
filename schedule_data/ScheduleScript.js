@@ -110,30 +110,30 @@ async function main() {
 
   // Post to mySql
 
-  // console.log("Posting routes");
-  // let sqlInsert = "INSERT IGNORE INTO routes (route_id, agency_id, route_short_name, route_long_name) VALUES ? ";
-  // await postSQLData(sqlInsert, routeInsert, 0);
+  console.log("Posting routes");
+  let sqlInsert = "INSERT IGNORE INTO routes (route_id, agency_id, route_short_name, route_long_name) VALUES ? ";
+  await postSQLData(sqlInsert, routeInsert, 0);
 
-  // console.log("Posting services");
-  // sqlInsert = "INSERT IGNORE INTO services (service_id, mon, tue, wed, thu, fri, sat, sun, date_start, date_end, date_exceptions) VALUES ? ";
-  // await postSQLData(sqlInsert, calendarInsert, 0);
+  console.log("Posting services");
+  sqlInsert = "INSERT IGNORE INTO services (service_id, mon, tue, wed, thu, fri, sat, sun, date_start, date_end, date_exceptions) VALUES ? ";
+  await postSQLData(sqlInsert, calendarInsert, 0);
 
-  // console.log("Posting trips");
-  // sqlInsert = "INSERT IGNORE INTO schedule_trips (trip_id, route_id, shape_id, service_id, schedule_start_stop_id, schedule_end_stop_id, schedule_number_stops, schedule_time, distance) VALUES ? ";
-  // await postSQLData(sqlInsert, tripInsert, 0);
+  console.log("Posting trips");
+  sqlInsert = "INSERT IGNORE INTO schedule_trips (trip_id, route_id, shape_id, service_id, schedule_start_stop_id, schedule_end_stop_id, schedule_number_stops, schedule_time, distance) VALUES ? ";
+  await postSQLData(sqlInsert, tripInsert, 0);
 
-  // let dataStr = "";
+  let dataStr = "";
 
-  // console.log("Posting date exceptions");
-  // for (let i = 0; i < exceptionsInsert[0].length; i++) {
-  //   dataStr += "('"+exceptionsInsert[0][i]+ "', '" +JSON.stringify(exceptionsInsert[1][i]) + "'), "
-  // }
+  console.log("Posting date exceptions");
+  for (let i = 0; i < exceptionsInsert[0].length; i++) {
+    dataStr += "('"+exceptionsInsert[0][i]+ "', '" +JSON.stringify(exceptionsInsert[1][i]) + "'), "
+  }
 
-  // let sqlString = "INSERT INTO services (service_id, date_exceptions) VALUES " +
-  //                   dataStr.slice(0, dataStr.length-2) +
-  //                   " ON DUPLICATE KEY UPDATE `date_exceptions` = VALUES(`date_exceptions`)";
+  let sqlString = "INSERT INTO services (service_id, date_exceptions) VALUES " +
+                    dataStr.slice(0, dataStr.length-2) +
+                    " ON DUPLICATE KEY UPDATE `date_exceptions` = VALUES(`date_exceptions`)";
 
-  // await postSQLData(sqlString, null, 0);
+  await postSQLData(sqlString, null, 0);
 
 
   // Check that trip records from the API haven't had altered field values

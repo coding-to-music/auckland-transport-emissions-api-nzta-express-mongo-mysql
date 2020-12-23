@@ -141,7 +141,7 @@ function formatTripEntry(responseArr, tripIDs) {
       let shapeID = responseArr[i][0].shape_id;
       tripData.push([tripIDs[i], shapeID, distance]);
     } else {
-      tripData.push([tripIDs[i], null, 0]);
+      tripData.push([tripIDs[i], null, -1]);
     }
   }
   return tripData

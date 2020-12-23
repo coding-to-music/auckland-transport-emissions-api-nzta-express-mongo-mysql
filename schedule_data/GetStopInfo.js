@@ -36,6 +36,10 @@ var fetchConfig = {
   //body: JSON.stringify(data) // body data type must match "Content-Type" header
 };
 
+var insertStatement = "INSERT INTO schedule_trips (trip_id, schedule_start_stop_id, schedule_end_stop_id, schedule_number_stops, schedule_time) VALUES ?" + 
+"ON DUPLICATE KEY UPDATE `schedule_start_stop_id` = VALUES(`schedule_start_stop_id`), `schedule_end_stop_id` = VALUES(`schedule_end_stop_id`)," +
+"`schedule_number_stops` = VALUES(`schedule_number_stops`), `schedule_time` = VALUES(`schedule_time`);";
+
 if (require.main === module) {
   main();
 }
@@ -55,15 +59,7 @@ async function main() {
     // console.log(tripIDs);
 
     // Use trip_ids to retrieve stop times 
-    let dataArr = await retrieveStopData(tripIDs);
-
-    let insertStatement = "INSERT INTO schedule_trips (trip_id, schedule_start_stop_id, schedule_end_stop_id, schedule_number_stops, schedule_time) VALUES ?" + 
-    "ON DUPLICATE KEY UPDATE `schedule_start_stop_id` = VALUES(`schedule_start_stop_id`), `schedule_end_stop_id` = VALUES(`schedule_end_stop_id`)," +
-    "`schedule_number_stops` = VALUES(`schedule_number_stops`), `schedule_time` = VALUES(`schedule_time`);";
-
-    await postSQLData(insertStatement, dataArr);
-
-    await postSQLData("show warnings;");
+    await retrievePostStopData(tripIDs);
 
     pool.end( function (err) {
       if (err) {
@@ -74,11 +70,10 @@ async function main() {
 }
 
 
-async function retrieveStopData (allTripIDs) {
+async function retrievePostStopData (allTripIDs) {
   return new Promise( async function (resolve, reject) {
   let i = 0;
-  let interval = 20;
-  let sqlData = [];
+  let interval = 25;
   while (i < allTripIDs.length) {
   // while (i < 100) { // For Debug purposes
     let endIndex = Math.min(i+interval, allTripIDs.length);
@@ -90,15 +85,15 @@ async function retrieveStopData (allTripIDs) {
 
     // console.log(apiResponseArr[0]);
 
-    let formatData = formatStopResponse(apiResponseArr);
+    let formattedData = formatStopResponse(apiResponseArr);
 
-    // console.log(formatData.length);
+    console.log(formattedData.length + "/" + apiResponseArr.length + " non-empty arrays received");
 
-    formatData.map( (data) => sqlData.push(data) );
+    await postSQLData(insertStatement, formattedData);
 
     i += interval;
   }
-  resolve(sqlData);
+  resolve();
   });
 }
 
@@ -127,10 +122,9 @@ async function getMultipleATAPI(retTripIDs) {
 function formatStopResponse(responseArr) {
   responseArr = responseArr.map( function(stopTimes) {
     let id, noStops, startStop, endStop, scheduleTime;
-
     if(stopTimes.length == 0) {
       // console.log(stopTimes);
-      return [ id, null, null, 0, 0];
+      return [ id, null, null, -1, -1];
     }
 
     id = stopTimes[0].trip_id;
@@ -145,6 +139,7 @@ function formatStopResponse(responseArr) {
 
     return [ id, startStop, endStop, noStops, scheduleTime];
   } );
+  return responseArr;
 };
 
 
