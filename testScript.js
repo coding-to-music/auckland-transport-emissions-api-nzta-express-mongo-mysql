@@ -8,9 +8,17 @@ const SQLPool = new SQLManagement();
 const MongoClient = require('./node_modules/mongodb').MongoClient;
 const client = new MongoClient(config.mongodb.uri, { useUnifiedTopology: true });
 
-let urls = ["https://api.at.govt.nz/v2/gtfs/trips", "https://api.at.govt.nz/v2/gtfs/agency", "https://api.at.govt.nz/v2/gtfs/calendar", "https://api.at.govt.nz/v2/gtfs/routes", "https://api.at.govt.nz/v2/gtfs/stops", "https://api.at.govt.nz/v2/gtfs/versions"]
+let urls = ["https://api.at.govt.nz/v2/gtfs/trips", "https://api.at.govt.nz/v2/gtfs/agency", "https://api.at.govt.nz/v2/gtfs/calendar", "https://api.at.govt.nz/v2/gtfs/calendarDate","https://api.at.govt.nz/v2/gtfs/routes", "https://api.at.govt.nz/v2/gtfs/stops", "https://api.at.govt.nz/v2/gtfs/versions"]
 
-exec();
+client.connect(async (err, db) => {
+  // callTripUpdates("https://api.at.govt.nz/v2/gtfs/calendarDate").then((data) => {
+  //   postToMongo(db, data.response, "https://api.at.govt.nz/v2/gtfs/calendarDate");
+  // })
+  await db.db("ate_model").collection("calendarDate").createIndex({"service_id" : 1});
+  db.close();
+})
+
+// exec();
 
 async function exec() {
     client.connect(async (err, db) => {
@@ -29,10 +37,14 @@ async function exec() {
 async function postToMongo(db, data, url) {
   console.log(data);
       let collectionName = url.split("/")[url.split("/").length - 1];
-      await db.db("ate_model").collection(collectionName).drop((err, results) => {
-        if (err) throw err;
-        console.log(results);
-      });
+
+      //Test for drop?
+      // await db.db("ate_model").collection(collectionName).drop((err, results) => {
+      //   if (err) throw err;
+      //   console.log(results);
+      // });
+      //Insert new data
+      //Beware of overlapping unique fields
       await db.db("ate_model")
         .collection(collectionName)
         .insertMany(data, function(err, results) {
