@@ -44,10 +44,10 @@ app.get('/', async (req, res) => {
   res.sendFile(path.join(__dirname + "/index/index.html"));
 })
 
-app.get('/compareSchedule', async (req, res) => {
+app.get('/mongoInterface', async (req, res) => {
   //render page
   console.log("Yeow, we running bruh dew.");
-  res.sendFile(path.join(__dirname + "/compareSchedule/compareSchedule.html"));
+  res.sendFile(path.join(__dirname + "/mongoInterface/mongoInterface.html"));
 })
 
 client.connect(async (err, db) => {
@@ -623,7 +623,10 @@ client.connect(async (err, db) => {
   })
 
   //Join calendar to schedule
+  //Send the generated info back to the requester
   app.get("/generate_schedule_2", async (req, res) => {
+    let response = [];
+
     //Get info from calendar    
     //Add routes
     let pipe = [
@@ -766,10 +769,25 @@ client.connect(async (err, db) => {
             //Create indexes for  this collection
             await dbo.collection("final_trip_UUID_set_2").createIndex({ "trip_id": 1 }, { unique: true });
             await dbo.collection("final_trip_UUID_set_2").createIndex({ "service_days.start_date": 1 });
+            console.log("Finished! :D");
+            res.send(modDocs);
           });
         })
       })
     })
+  })
+
+  app.get("/get_raw_data", async (req, res) => {
+    let returnData = [];
+    let dates = formDateArray();
+    for (let date of dates) {
+      let data = await dbo.collection("realtime_raw").find({"date" : date}).toArray();
+      returnData.push(data);
+      console.log(data);
+      // path.join(__dirname, 'file.json')
+      fs.appendFileSync("./dataBackups/realtime_raw_" + date, JSON.stringify(data));
+    }
+    res.send(returnData);
   })
 
   app.post('/postThat', (req, res) => {
