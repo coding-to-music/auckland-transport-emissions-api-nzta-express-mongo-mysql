@@ -7,7 +7,22 @@ const app = express();
 const bodyParser = require("../node_modules/body-parser");
 const router = express.Router();
 
-const path = require('path');
+const path = require('../node_modules/path');
+const csv = require('../node_modules/csv-parser');
+
+const fs = require('fs');
+let FLEET_LIST = {};
+//Create the fleet list
+fs.createReadStream('./public/data/Auckland Bus Operator Fleetlist 2020.xlsx - Urban Passenger Vehicle List.csv')
+  .pipe(csv())
+  .on('data', (row) => {
+    if (row["Operator Code"] === "GB" || row["Operator Code"] === "RT") {
+      FLEET_LIST[row["Rapid Vehicle Number"]] = row;
+    }
+  })
+  .on('end', () => {
+    console.log('CSV file successfully processed');
+  });
 
 //DB IMPORTS
 const SQLManagement = require("../SQLManagment.js");
