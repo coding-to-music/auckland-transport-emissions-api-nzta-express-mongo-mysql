@@ -44,10 +44,10 @@ app.get('/', async (req, res) => {
   res.sendFile(path.join(__dirname + "/index/index.html"));
 })
 
-app.get('/compareSchedule', async (req, res) => {
+app.get('/mongoInterface', async (req, res) => {
   //render page
   console.log("Yeow, we running bruh dew.");
-  res.sendFile(path.join(__dirname + "/compareSchedule/compareSchedule.html"));
+  res.sendFile(path.join(__dirname + "/mongoInterface/mongoInterface.html"));
 })
 
 client.connect(async (err, db) => {
@@ -623,7 +623,10 @@ client.connect(async (err, db) => {
   })
 
   //Join calendar to schedule
+  //Send the generated info back to the requester
   app.get("/generate_schedule_2", async (req, res) => {
+    let response = [];
+
     //Get info from calendar    
     //Add routes
     let pipe = [
@@ -766,10 +769,39 @@ client.connect(async (err, db) => {
             //Create indexes for  this collection
             await dbo.collection("final_trip_UUID_set_2").createIndex({ "trip_id": 1 }, { unique: true });
             await dbo.collection("final_trip_UUID_set_2").createIndex({ "service_days.start_date": 1 });
+            console.log("Finished! :D");
+            res.send(modDocs);
           });
         })
       })
     })
+  })
+
+  //Get the raw realtime data provided by the AT API
+  //Creates a local copy of each day.
+  // Query Params: 
+  // download=true: download local copy
+  // dates=: a date or range of dates for the data to fall between (inclusive)
+  // in form [{1} DD/MM/YYY{1} [, DD/MM/YY]? ]{1} (<--regex)
+  app.get("/get_raw_data", async (req, res) => {
+    console.log(req.query);
+    let returnData = [];
+    let dates = req.query.dates != undefined ? formDateArrayFromQuery() : formDateArray();
+    for (let date of dates) {
+      let data = await dbo.collection("realtime_raw").find({"date" : date}).toArray();
+      returnData.push(data);
+      if (req.query.download === true) {
+        try {
+          console.log("Attempting to overwrite existing file");
+          fs.writeFileSync("./dataBackups/realtime_raw_" + date, JSON.stringify(data))
+        } catch (err) {
+          console.log("File does not exist ¯\\_(ツ)_/¯, creating...");
+          fs.appendFileSync("./dataBackups/realtime_raw_" + date, JSON.stringify(data));
+        }
+        console.log(date + " has been downloaded and written to dataBackups!");  
+      }
+    }
+    res.send(returnData);
   })
 
   app.post('/postThat', (req, res) => {
@@ -808,6 +840,37 @@ function formDateArray() {
   }
   return dates;
 }
+
+/**
+ * Generate an array of dates between the start date and either the end date or today
+ */
+function formDateArrayFromQuery(queryDates) {
+  let dates = [];
+  let startDate, endDate;
+  try {
+    let q = queryDates.split("[")[1].split("]")[1];
+    if (q.split(",") === q) {
+      startDate = q;
+      endDate = new Date();
+    } else {
+      startDate = q.split(",");
+      endDate = startDate[1].trim();
+      startDate = startDate[0].trim();
+      endDate = endDate.split("/");
+      endDate = new Date(parseInt(endDate[2]), parseInt(endDate[1]) - 1, parseInt(endDate[0]));
+    }
+    startDate = startDate.split("/");
+    startDate = new Date(parseInt(startDate[2]), parseInt(startDate[1]) - 1, parseInt(startDate[0]));
+    for (let d = startDate; d < endDate; d.setDate(d.getDate() + 1)) {
+      dates.push(fixDate(d));
+    }
+  } catch (err) {
+    console.log("An error occured ¯\\_(ツ)_/¯, likely a misformed date array. Please try again.");
+  }
+  
+  return dates;
+}
+
 
 function formGetQuery(endpoint, args) {
   let string = config.host;
