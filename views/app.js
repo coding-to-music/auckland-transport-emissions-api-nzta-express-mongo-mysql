@@ -777,15 +777,29 @@ client.connect(async (err, db) => {
     })
   })
 
+  //Get the raw realtime data provided by the AT API
+  //Creates a local copy of each day.
+  // Query Params: 
+  // download=true: download local copy
+  // dates=: a date or range of dates for the data to fall between (inclusive)
+  // in form [{1} DD/MM/YYY{1} [, DD/MM/YY]? ]{1} (<--regex)
   app.get("/get_raw_data", async (req, res) => {
+    console.log(req.query);
     let returnData = [];
-    let dates = formDateArray();
+    let dates = req.query.dates != undefined ? formDateArrayFromQuery() : formDateArray();
     for (let date of dates) {
       let data = await dbo.collection("realtime_raw").find({"date" : date}).toArray();
       returnData.push(data);
-      console.log(data);
-      // path.join(__dirname, 'file.json')
-      fs.appendFileSync("./dataBackups/realtime_raw_" + date, JSON.stringify(data));
+      if (req.query.download === true) {
+        try {
+          console.log("Attempting to overwrite existing file");
+          fs.writeFileSync("./dataBackups/realtime_raw_" + date, JSON.stringify(data))
+        } catch (err) {
+          console.log("File does not exist ¯\\_(ツ)_/¯, creating...");
+          fs.appendFileSync("./dataBackups/realtime_raw_" + date, JSON.stringify(data));
+        }
+        console.log(date + " has been downloaded and written to dataBackups!");  
+      }
     }
     res.send(returnData);
   })
@@ -826,6 +840,37 @@ function formDateArray() {
   }
   return dates;
 }
+
+/**
+ * Generate an array of dates between the start date and either the end date or today
+ */
+function formDateArrayFromQuery(queryDates) {
+  let dates = [];
+  let startDate, endDate;
+  try {
+    let q = queryDates.split("[")[1].split("]")[1];
+    if (q.split(",") === q) {
+      startDate = q;
+      endDate = new Date();
+    } else {
+      startDate = q.split(",");
+      endDate = startDate[1].trim();
+      startDate = startDate[0].trim();
+      endDate = endDate.split("/");
+      endDate = new Date(parseInt(endDate[2]), parseInt(endDate[1]) - 1, parseInt(endDate[0]));
+    }
+    startDate = startDate.split("/");
+    startDate = new Date(parseInt(startDate[2]), parseInt(startDate[1]) - 1, parseInt(startDate[0]));
+    for (let d = startDate; d < endDate; d.setDate(d.getDate() + 1)) {
+      dates.push(fixDate(d));
+    }
+  } catch (err) {
+    console.log("An error occured ¯\\_(ツ)_/¯, likely a misformed date array. Please try again.");
+  }
+  
+  return dates;
+}
+
 
 function formGetQuery(endpoint, args) {
   let string = config.host;

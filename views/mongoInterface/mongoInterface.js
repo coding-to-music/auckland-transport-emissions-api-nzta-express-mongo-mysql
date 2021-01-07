@@ -15,15 +15,13 @@ function init() {
 
   rawToFinalButton.onclick = compareFinalToRaw();
   finalToRawButton.onclick = compareRawToFinal();
-  // generateSchedule.onclick = generateSchedule();
-  // downloadRawData.onclick = downloadRawData();
+  generateSchedule.onclick = generateSchedule();
+  downloadRawData.onclick = downloadRawData();
 }
 
 
 async function generateSchedule() {
   console.log("Generating schedule from AT API");
-
-
 }
 
 async function downloadRawData() {
