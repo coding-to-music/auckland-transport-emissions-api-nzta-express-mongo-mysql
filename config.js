@@ -19,6 +19,6 @@ config.mongodb.uri = `mongodb+srv://${config.mongodb.user}:${config.mongodb.pass
 //COLLECTION NAMES
 config.REALTIME_RAW = "realtime_raw";
 config.REALTIME_W_ROUTES = "raw_w_routes";
-config.FINAL_SCHEDULE_COL = "final_trip_UUID_set_2";
+config.FINAL_SCHEDULE_COL = "final_trip_UUID_set";
 
 module.exports = config;
