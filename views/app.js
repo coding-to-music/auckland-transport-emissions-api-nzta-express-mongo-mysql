@@ -107,49 +107,6 @@ client.connect(async (err, db) => {
     })
   })
 
-  // Auto generate valid trips from realtime_raw
-  // Append route information, used to filter to provider
-  // Creates collection until todays date
-  // Overwrites: raw_w_routes
-  app.get('/generate_raw_w_routes', async (req, res) => {
-    let dateToCheck = formDateArray();
-    let trips = dbo.collection("realtime_raw");
-
-    let lookup = [
-      {
-        "$match": {
-          'date': { "$in": dateToCheck }
-        }
-      },
-      {
-        "$lookup": {
-          "from": "routes",
-          "localField": "route_id",
-          "foreignField": "route_id",
-          "as": "raw_w_route_id"
-        }
-      },
-      {
-        "$match": {
-          "raw_w_route_id.0.agency_id": { "$in": ["RTH", "GBT"] }
-        }
-      },
-      {
-        "$out": "raw_w_routes"
-      }
-    ]
-
-    let options = {
-      allowDiskUse: 1
-    };
-
-    await trips.aggregate(lookup, options).toArray(async (err, docs) => {
-      if (err) throw err;
-      await dbo.collection("raw_w_routes").createIndex({ "date" : 1 }).then(() => {console.log("Indexes created")});
-      console.log("Collection raw_w_routes has been created!");
-    })
-  })
-
   //Test the trips that are currently without stop information
   //Uses: raw_w_routes
   //Overwrites: invalid_trips_buffer
@@ -484,9 +441,51 @@ client.connect(async (err, db) => {
     }
   })
 
-  //Join calendar to schedule
-  //Send the generated info back to the requester
-  app.get("/generate_schedule_2", async (req, res) => {
+  // Auto generate valid trips from realtime_raw
+  // Append route information, used to filter to provider
+  // Auto generate schedule from trips, routes, calendar and calendarDates
+  // Creates collection until todays date
+  // USES: (realtime_raw, routes), (trips, routes), (trips, calendar, calendarDate), (filtered_trips)
+  // Overwrites: (raw_w_routes), (filtered_trips), (filtered_trips), (final_trip_UUID_set)
+  // Send the generated info back to the requester
+  app.get("/generate_schedule", async (req, res) => {
+    let dateToCheck = formDateArray();
+    let trips = dbo.collection("realtime_raw");
+
+    let lookup = [
+      {
+        "$match": {
+          'date': { "$in": dateToCheck }
+        }
+      },
+      {
+        "$lookup": {
+          "from": "routes",
+          "localField": "route_id",
+          "foreignField": "route_id",
+          "as": "raw_w_route_id"
+        }
+      },
+      {
+        "$match": {
+          "raw_w_route_id.0.agency_id": { "$in": ["RTH", "GBT"] }
+        }
+      },
+      {
+        "$out": "raw_w_routes"
+      }
+    ]
+
+    let options = {
+      allowDiskUse: 1
+    };
+
+    await trips.aggregate(lookup, options).toArray(async (err, docs) => {
+      if (err) throw err;
+      await dbo.collection("raw_w_routes").createIndex({ "date" : 1 }).then(() => {console.log("Indexes created")});
+      console.log("Collection raw_w_routes has been created!");
+    })
+
     console.log("Starting schedule dataset generation pipeline")
     //Get info from calendar    
     //Add routes
@@ -611,8 +610,8 @@ client.connect(async (err, db) => {
     })
   })
 
-  //Get the raw realtime data provided by the AT API
-  //Creates a local copy of each day.
+  // Get the raw realtime data provided by the AT API
+  // Creates a local copy of each day.
   // Query Params: 
   // download=true: download local copy
   // dates=: a date or range of dates for the data to fall between (inclusive)
