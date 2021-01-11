@@ -613,13 +613,14 @@ client.connect(async (err, db) => {
   // dates=: a date or range of dates for the data to fall between (inclusive)
   // in form [{1} DD/MM/YYY{1} [, DD/MM/YY]? ]{1} (<--regex)
   app.get("/get_raw_data", async (req, res) => {
-    console.log(req.query);
+    console.log(req.query.download === 'true');
     let returnData = [];
-    let dates = req.query.dates != undefined ? formDateArrayFromQuery() : formDateArray();
+    let dates = req.query.dates != undefined ? formDateArrayFromQuery(req.query.dates) : formDateArray();
     for (let date of dates) {
+      console.log(date);
       let data = await dbo.collection("realtime_raw").find({"date" : date}).toArray();
       returnData.push(data);
-      if (req.query.download === true) {
+      if (req.query.download === 'true') {
         try {
           console.log("Attempting to overwrite existing file");
           fs.writeFileSync("./dataBackups/realtime_raw_" + date, JSON.stringify(data))
@@ -750,8 +751,9 @@ function formDateArrayFromQuery(queryDates) {
   let dates = [];
   let startDate, endDate;
   try {
-    let q = queryDates.split("[")[1].split("]")[1];
-    if (q.split(",") === q) {
+    let q = queryDates.split("[")[1].split("]")[0];
+    console.log(q)
+    if (q.split(",")[0] === q) {
       startDate = q;
       endDate = new Date();
     } else {
@@ -767,6 +769,7 @@ function formDateArrayFromQuery(queryDates) {
       dates.push(fixDate(d));
     }
   } catch (err) {
+    console.log(err);
     console.log("An error occured ¯\\_(ツ)_/¯, likely a misformed date array. Please try again.");
   }
   
