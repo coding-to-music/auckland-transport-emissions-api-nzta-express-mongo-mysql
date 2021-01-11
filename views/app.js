@@ -528,10 +528,6 @@ client.connect(async (err, db) => {
       }
     ]
 
-    let options = {
-      allowDiskUse: 1
-    };
-
     await dbo.collection("trips").aggregate(pipe, options).toArray(async (err, docs) => {
       if (err) throw err;
       console.log("Added filtered route information to schedule_trips, written to filtered_trips");
