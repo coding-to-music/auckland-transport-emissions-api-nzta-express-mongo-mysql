@@ -131,7 +131,7 @@ client.connect(async (err, db) => {
       },
       {
         "$match": {
-          "raw_w_route_id.0.agency_id": { "$in": ["RTH", "HE", "GBT"] }
+          "raw_w_route_id.0.agency_id": { "$in": ["RTH", "GBT"] }
         }
       },
       {
@@ -261,120 +261,6 @@ client.connect(async (err, db) => {
     })
   })
 
-  // Join the calendar to the schedule information to form our UUID
-  // Uses: schedule_trips, filtered_trips
-  // Overwrites: filtered_trips
-  app.get("/generate_schedule_calendar", async (req, res) => {
-    let c1 = dbo.collection("schedule_trips");
-
-    //Ensure index is created
-    // :( cannot do because route_id is not unique
-    // await c1.createIndex({"route_id" : 1}, {unique:true});
-
-    //Add routes
-    let pipe = [
-      {
-        "$lookup": {
-          "from": "routes",
-          "localField": "route_id",
-          "foreignField": "route_id",
-          "as": "routes"
-        }
-      },
-      {
-        "$match": {
-          "routes.0.agency_id": { "$in": ["GBT", "HE", "RTH"] }
-        }
-      },
-      {
-        "$out": "filtered_trips"
-      }
-    ]
-
-    let c2 = dbo.collection("filtered_trips");
-
-    // await c2.createIndex({ "service_id": 1 }, { unique: true });
-
-    //Add calendar days
-    let pipe2 = [
-      {
-        "$lookup": {
-          "from": "calendar",
-          "localField": "service_id",
-          "foreignField": "service_id",
-          "as": "service_days"
-        }
-      },
-      {
-        "$out": "filtered_trips"
-      }
-    ]
-
-    let options = {
-      allowDiskUse: 1
-    };
-
-    c1.aggregate(pipe, options).toArray((err, docs) => {
-      if (err) throw err;
-      console.log("Added filtered route information to schedule_trips, written to filtered_trips");
-      c2.aggregate(pipe2, options).toArray((err, docs) => {
-        if (err) throw err;
-        console.log("Added filtered calendar information to filtered_trips, written to filtered_trips");
-      })
-    })
-  })
-
-  //Create the final collection of schedule information with a collection of trip ids
-  //Uses: filtered_trips
-  //Overwrites: final_trip_UUID_set
-  app.get("/generate_schedule_UUID", async (req, res) => {
-    let c1 = dbo.collection("filtered_trips");
-
-    // await c1.createIndex({ "service_days.start_date": 1 }, { unique: true });
-
-    let query = {"service_days.start_date": { "$gte": "2020-12-22T00:00:00.000Z" } }
-
-    let offsets = {
-      "tuesday": 0,
-      "wednesday": 1,
-      "thursday": 2,
-      "friday": 3,
-      "saturday": 4,
-      "sunday": 5,
-      "monday": 6,
-    }
-
-    await c1.find(query, {}).toArray(async (err, docs) => {
-      if (err) throw err;
-      console.log(docs);
-      //Check every journey entry
-      let modDocs = [];
-      for (let entry of docs) {
-        entry.UUID = [];
-        let service_days = entry.service_days[0];
-        //Get service days
-        for (let d of Object.keys(service_days)) {
-          if (service_days[d] === 1) {
-            for (let dt = new Date(2020, 11, (22 + offsets[d])); dt < new Date(2021, 0, 21); dt.setDate(dt.getDate() + 7)) {
-              entry.UUID.push(fixDate(dt) + "-" + entry.trip_id);
-            }
-          }
-        }
-        modDocs.push(entry);
-      }
-
-      console.log(modDocs);
-
-      await dbo.collection(config.FINAL_SCHEDULE_COL).insertMany(modDocs, async (err, results) => {
-        if (err) throw err;
-        console.log(results);
-        //Create indexes for  this collection
-        await dbo.collection(config.FINAL_SCHEDULE_COL).createIndex({ "trip_id" : 1 }, { unique: true });  
-        await dbo.collection(config.FINAL_SCHEDULE_COL).createIndex({ "service_days.start_date" : 1 });
-      });
-    })
-  })
-
   // Get all the UUIDs for a day then send these to the schedule for comparison,
   // do the same for the schedule. This tells us roughly how many
   // trips are missing from the realtime and the schedule
@@ -383,23 +269,27 @@ client.connect(async (err, db) => {
 
     let raw = await dbo.collection("raw_w_routes")
       .find({
-        "date" : {"$gte": "20201222","$lte": "20201229"},
+        "date" : {"$gte": "20201223","$lte": "20201229"},
       }, {}).toArray();
     let UUIDsRaw = raw.map(d => {
       return d.UUID;
     })
     let scheduleByRaw = await dbo.collection(config.FINAL_SCHEDULE_COL)
-      .find({
-        "UUID" : {"$in" : UUIDsRaw},
-      }, {}).toArray();
-    let scheduleByRawUUIDs = [];
+      .aggregate([{
+        "$match" : {
+          "UUID" : {"$in" : UUIDsRaw},
+        }
+      }
+    ], {}).toArray();
+    let scheduleByRawUUIDs = new Set();
     for (let trip of scheduleByRaw) {
       for (let journey of trip.UUID) {
-        if (journey.match(/2020122[2-9]/)) {
-          scheduleByRawUUIDs.push(journey);
+        if (journey.match(/2020122[3-9]/)) {
+          scheduleByRawUUIDs.add(journey);
         }
       }
     }
+    scheduleByRawUUIDs = Array.from(scheduleByRawUUIDs);
     console.log("UUIDs in raw:", raw.length);
     console.log("UUIDs in schedule:", scheduleByRawUUIDs.length);
 
@@ -407,16 +297,20 @@ client.connect(async (err, db) => {
     let UUIDsSchedule = [];
     for (let trip of schedule) {
       for (let journey of trip.UUID) {
-        if (journey.match(/2020122[2-9]/)) {
+        if (journey.match(/2020122[3-9]/)) {
           UUIDsSchedule.push(journey);
         }
       }
     }
     let rawBySchedule = await dbo.collection("raw_w_routes")
-      .find({
-        "UUID" : {"$in" : UUIDsSchedule},
-        // "date" : {"$gte": "20201222","$lte": "20201229"},
-      }, {}).toArray();
+      .aggregate([
+        {
+          "$match" : {
+            "UUID" : {"$in" : UUIDsSchedule},
+            "date" : {"$gte": "20201223","$lte": "20201229"},
+          }
+        },
+      ], {}).toArray();
     console.log("UUIDS in Schedule", UUIDsSchedule.length);
     console.log("UUIDs in Raw", rawBySchedule.length);
   })
@@ -467,27 +361,12 @@ client.connect(async (err, db) => {
       ]
 
       await dbo.collection("raw_w_routes").aggregate(pipeline, {}).toArray().then(async function(docs) {
-        // console.log("Number of realtime trips w/ matching trip_id's: " + docs.length);
         console.log("Realtime trips by UUID: ", docs);
         for (let doc of docs) {
           if (doc.length === 0) results.noEntry = results.noEntry + 1;
           else results.Entry = results.Entry + 1;
         }
         console.log("Number of entries by UUIDS " + date + ": ", results);
-// // 
-//         let UUIDsFromRealtime = docs.map(d => {
-//           return d.UUID;
-//         })
-//         let pipe =[
-//           {
-//             "$match" : {
-//               "UUID" : {"$nin" : UUIDsFromRealtime}
-//             }
-//           }
-//         ]
-//         await dbo.collection(config.FINAL_SCHEDULE_COL).aggregate(pipe, {}).toArray().then(function (docs) {
-//           console.log("docs that are missing UUIDs from realtime", docs);
-//         });
       });
 
       let pipeline2 = [
