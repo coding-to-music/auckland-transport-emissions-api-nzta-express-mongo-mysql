@@ -17,6 +17,8 @@ function init() {
   finalToRawButton.onclick = compareRawToFinal();
   generateSchedule.onclick = generateSchedule();
   downloadRawData.onclick = downloadRawData();
+
+  document.getElementById("info-container").appendChild(rawToFinalButton);
 }
 
 
