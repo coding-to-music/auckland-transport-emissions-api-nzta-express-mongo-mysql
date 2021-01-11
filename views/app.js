@@ -613,11 +613,9 @@ client.connect(async (err, db) => {
   // dates=: a date or range of dates for the data to fall between (inclusive)
   // in form [{1} DD/MM/YYY{1} [, DD/MM/YY]? ]{1} (<--regex)
   app.get("/get_raw_data", async (req, res) => {
-    console.log(req.query.download === 'true');
     let returnData = [];
     let dates = req.query.dates != undefined ? formDateArrayFromQuery(req.query.dates) : formDateArray();
     for (let date of dates) {
-      console.log(date);
       let data = await dbo.collection("realtime_raw").find({"date" : date}).toArray();
       returnData.push(data);
       if (req.query.download === 'true') {
