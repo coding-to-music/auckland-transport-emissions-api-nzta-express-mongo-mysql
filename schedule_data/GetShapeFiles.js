@@ -96,6 +96,7 @@ async function main() {
 
 async function getMultipleATAPI(retTripIDs) {
   let responseArr = [];
+  
   await new Promise( function(resolve) {
     let j = 0;
     let cancelInt = setInterval(() => {
@@ -108,8 +109,6 @@ async function getMultipleATAPI(retTripIDs) {
       }
     }, 150);
   })
-
-  // console.log(responseArr);
 
   return Promise.all(responseArr)
 }

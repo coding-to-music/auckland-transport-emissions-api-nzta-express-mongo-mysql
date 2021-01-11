@@ -9,6 +9,8 @@ const router = express.Router();
 
 const path = require('../node_modules/path');
 const csv = require('../node_modules/csv-parser');
+const geolib = require('../node_modules/geolib');
+const fetch = require('node-fetch');
 
 const fs = require('fs');
 let FLEET_LIST = {};
@@ -29,6 +31,7 @@ const SQLManagement = require("../SQLManagment.js");
 const SQLPool = new SQLManagement();
 
 const MongoClient = require('../node_modules/mongodb').MongoClient;
+const { Console } = require('console');
 const client = new MongoClient(config.mongodb.uri, { useUnifiedTopology: true });
 
 app.use(express.static(path.join('public')));
@@ -767,6 +770,62 @@ client.connect(async (err, db) => {
 
   })
 
+  app.get('/generate_schedule_distances', async (req, res) => {
+
+    let scheduleTrips = dbo.collection("final_trip_UUID_set");
+
+    console.log("Starting aggregate")
+
+    let lookup = [
+      { "$limit" : 100 }, // Limit on API requests for testing
+      {
+        "$match" : { "distance" : { "$exists" : false } }
+      }
+    ]
+
+    let options = {
+      allowDiskUse: 1
+    };
+
+    let noDistanceTrips = await scheduleTrips.aggregate(lookup, options).toArray();
+
+    let allTripIDs = noDistanceTrips.map( data => data.trip_id );
+
+    let i = 0;
+    let interval = 50;
+
+    while (i < allTripIDs.length) {
+      let endIndex = Math.min(i+interval, allTripIDs.length);
+      let selectIDs = allTripIDs.slice(i, endIndex);
+      console.log(new Date + "   " + selectIDs[0] + "  " + i + " out of " + allTripIDs.length);
+
+      // Use trip_ids to retrieve shape files
+      let apiResponseArr = await getMultipleATAPI("https://api.at.govt.nz/v2/gtfs/shapes/tripId/", selectIDs);
+      apiResponseArr = apiResponseArr.map( (data) => data.response );
+      
+      let distanceJSON = formatTripDistance(apiResponseArr, selectIDs);
+
+      let bulk = scheduleTrips.initializeUnorderedBulkOp();
+      for (let each of distanceJSON) {
+        bulk.find({
+          "trip_id": each.tripID
+        }).updateOne({
+          "$set" : {
+            "distance" : each.distance,
+            "shape_id" : each.shapeID
+          }
+        });
+      }
+      //Call execute
+      await bulk.execute(function (err, updateResult) {
+        if (err) throw err;
+        console.log(err, updateResult);
+      });
+
+      i += interval;
+    }
+  })
+
 })
 
 // add router in the Express app.
@@ -937,4 +996,81 @@ function arr_diff (a1, a2) {
   }
 
   return diff;
+}
+
+/**
+ * Helper method and variable for managing parallel requests to the AT API
+ */
+
+const fetchConfig = {
+  method: 'GET', // *GET, POST, PUT, DELETE, etc.
+  mode: 'cors', // no-cors, *cors, same-origin
+  cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+  credentials: 'same-origin', // include, *same-origin, omit
+  headers: {
+    'Content-Type': 'application/json',
+    "Ocp-Apim-Subscription-Key": "99edd1e8c5504dfc955a55aa72c2dbac"
+    // 'Content-Type': 'application/x-www-form-urlencoded',
+  },
+  redirect: 'follow', // manual, *follow, error
+  referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+  //body: JSON.stringify(data) // body data type must match "Content-Type" header
+};
+
+async function getMultipleATAPI(url, rtrvTripIDs) {
+  let responseArr = [];
+  
+  await new Promise( function(resolve) {
+    let j = 0;
+    let cancelInt = setInterval(() => {
+      let data = fetch(url + rtrvTripIDs[j], fetchConfig).then( (data) => data.json() );
+      responseArr.push(data);
+      j++;
+      if (j == rtrvTripIDs.length) {
+        clearInterval(cancelInt);
+        resolve();
+      }
+    }, 150);
+  })
+
+  return Promise.all(responseArr)
+}
+
+/**
+ * Helper method to find the distance of polygon paths and format them 
+ * into an array with the corresponding trip_id
+ * 
+ * @param {*} responseArr - The array of responses from the AT API
+ * @param {*} tripIDs - The relevant trip ids
+ */
+
+function formatTripDistance(responseArr, tripIDs) {
+  let tripData = [];
+  if( responseArr.length != tripIDs.length) {
+    console.log("You've made an error somewhere, Shape and ID arrays not equal lengths");
+  }
+  for (let i = 0; i < tripIDs.length; i++) {
+    if(responseArr[i].length != 0) {
+      let distance = calcShapeDist(responseArr[i]);
+      let shapeID = responseArr[i][0].shape_id;
+      tripData.push({"tripID" : tripIDs[i], "shapeID" : shapeID, "distance" : distance});
+    } else {
+      tripData.push({"tripID" : tripIDs[i], "shapeID" : null, "distance" : -1});
+    }
+  }
+  return tripData
+}
+
+
+function calcShapeDist(shape) {
+  let distance = 0;
+  let lonA, latA, lonB, latB;
+  for (let i = 0; i < shape.length - 1; i++) {
+    lonA = shape[i].shape_pt_lon;
+    latA = shape[i].shape_pt_lat;
+    lonB = shape[i+1].shape_pt_lon;
+    latB = shape[i+1].shape_pt_lat;
+    distance += geolib.getDistance([lonA, latA], [lonB, latB]);
+  }
+  return distance;
 }
