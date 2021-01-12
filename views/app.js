@@ -609,12 +609,13 @@ client.connect(async (err, db) => {
   // Get the raw realtime data provided by the AT API
   // Creates a local copy of each day.
   // Query Params: 
-  // download=true: download local copy
-  // dates=: a date or range of dates for the data to fall between (inclusive)
+  //    download=true: download local copy
+  //    dates=: a date or range of dates for the data to fall between (inclusive)
   // in form [{1} DD/MM/YYY{1} [, DD/MM/YY]? ]{1} (<--regex)
   app.get("/get_raw_data", async (req, res) => {
     let returnData = [];
     let dates = req.query.dates != undefined ? formDateArrayFromQuery(req.query.dates) : formDateArray();
+    console.log(dates);
     for (let date of dates) {
       let data = await dbo.collection("realtime_raw").find({"date" : date}).toArray();
       returnData.push(data);
@@ -634,16 +635,13 @@ client.connect(async (err, db) => {
 
   app.post('/postThat', (req, res) => {
     //code to perform particular action.
-    //To access POST variable use req.body()methods.
+    //To access POST variable use req.body() methods.
     console.log(req.body);
-
-
   })
 
 })
 
 // add router in the Express app.
-
 app.listen(config.port, () => {
   console.log(`Express App running at http://localhost:${config.port}`);
 })

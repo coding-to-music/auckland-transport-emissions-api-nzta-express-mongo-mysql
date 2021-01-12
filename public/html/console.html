@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style>
+			#console {
+				width: 800px;
+				height: 400px;
+				background: #575757;
+				color: white;
+				margin: 30px auto;
+				padding: 10px;
+				overflow: auto;
+			}
+		</style>
+		<script>
+			document.addEventListener("DOMContentLoaded", function(){
+				html = {
+					panel: document.querySelector("#console"),
+					log: function(m) {
+						var newline = document.createElement("div");
+						newline.innerHTML = "&gt; " + m;
+						this.panel.appendChild(newline);
+					}
+				};
+			});				
+		</script>
+	</head>
+	<body>
+		<div id="console"></div>
+	</body>
+</html>
