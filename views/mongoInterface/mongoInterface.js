@@ -11,11 +11,13 @@ document.addEventListener("DOMContentLoaded", () => {
 })
 
 function init() {
+  let compareUUIDsButton = document.createElement("BUTTON");
   let rawToFinalButton = document.createElement("BUTTON");
   let finalToRawButton = document.createElement("BUTTON");
   let generateScheduleButton = document.createElement("BUTTON");
   let downloadRawDataButton = document.createElement("BUTTON");
 
+  compareUUIDsButton.innerHTML = "Compare UUIDs from raw data to generated schedule"
   rawToFinalButton.innerHTML = "Raw to Final Pipeline";
   finalToRawButton.innerHTML = "Final to Raw Pipeline";
   generateScheduleButton.innerHTML = "Generate Schedule";
@@ -27,6 +29,7 @@ function init() {
   downloadRawDataButton.onclick = downloadRawData;
 
   let element2 = document.getElementsByClassName('button-container');
+  element2[0].appendChild(compareUUIDsButton)
   element2[0].appendChild(rawToFinalButton);
   element2[0].appendChild(finalToRawButton);
   element2[0].appendChild(generateScheduleButton);
@@ -39,7 +42,7 @@ function init() {
  * 
  */ 
 async function generateSchedule() {
-  html.log("Generating schedule from AT API");
+  html.log("Generating schedule from AT API, progress can be monitored from the console (Ctrl + Shft + I)");
   await getFrom(URL + "/generate_schedule");
 }
 
@@ -64,7 +67,8 @@ async function downloadRawData() {
  * Compares: final_trip_UUID_set
  */
 async function compareRawToFinal() {
-  html.log("Starting raw to final comparison pipeline");
+  html.log("Starting raw to final comparison pipeline, progress can be monitored from the console (Ctrl + Shft + I)");
+  await getFrom(URL + "/compare_observed_to_schedule");
 }
 
 /**
@@ -72,12 +76,13 @@ async function compareRawToFinal() {
  * Compares: raw_w_routes
  */
 async function compareFinalToRaw() {
-  console.log("Starting final to raw comparison");
+  html.log("Starting final to raw comparison, progress can be monitored from the console (Ctrl + Shft + I)");
+  await getFrom(URL + "/compare_scheduled_to_observed");
 }
 
 async function compareUUIDs() {
-  console.log("Starting comparing UUIDs");
-
+  html.log("Starting comparing UUIDs, progress can be monitored from the console (Ctrl + Shft + I)");
+  await getFrom(URL + "/compare_UUIDs");
 }
 
 function createDatePickers() {
