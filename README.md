@@ -30,8 +30,6 @@ Endpoints:
 `/compare_scheduled_to_observed` | Get a day by day comparison of the trips in the schedule as the base table, and whether or not their UUIDs are present in the realtime. Take all the UUIDs from the schedule and compare | - | none, prints to console
 `/compare_observed_to_schedule` | Get the raw info for each day, then compare to schedule to see if the UUID of each journey is present in the schedule | - | none, prints to console.
 `generate_schedule` |   Auto generate valid trips from realtime_raw, append route information; used to filter to provider. Auto generate schedule from trips, routes, calendar and calendarDates. Creates collection until todays date | - | either generated data or response message
-`get_raw_data` | Get the raw realtime data provided by the AT API, optionally between a range of dates, and download data for each day. | Query Params: <ol><li>download=true: download local copy</li>
-    <li>dates=: a date or range of dates for the data to fall between (inclusive)</li>
-        <ul><li>..* dates in form [{1} DD/MM/YYYY{1} [, DD/MM/YYYY]? ]{1} (<--regex)<li></ul></ol> | JSON format data between dates provided, or 2020/12/23-2021/01/23
+`get_raw_data` | Get the raw realtime data provided by the AT API, optionally between a range of dates, and download data for each day. | Query Params: <ol><li>download=true: download local copy</li><li>dates=: a date or range of dates for the data to fall between (inclusive)</li><ul><li>..* dates in form [{1} DD/MM/YYYY{1} [, DD/MM/YYYY]? ]{1} (<--regex)</li></ul></ol> | JSON format data between dates provided, or 2020/12/23-2021/01/23
 
 ## UI
