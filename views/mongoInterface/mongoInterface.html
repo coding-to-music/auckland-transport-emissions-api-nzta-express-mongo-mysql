@@ -3,26 +3,31 @@
 
 <head>
     <!-- *******************SCRIPTS******************* -->
-    <script src="mongoInterface.js"></script>
-    <!-- <script src="../config.js" type="module"></script> -->
     <script src="../js/helpers.js" type="module"></script>
+    <script src="../js/console.js" type="module"></script>
+    <script src="mongoInterface.js" type="module"></script>
     <!-- *******************STYLES******************* -->
     <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/console.css">
 
+    <!-- *******************HTML******************* -->
+    <link href="/html/console.html" rel="import" />
 <head>
 
 <body>
 
-    <div class="info-container">
-        <div class="description-container">
-            <h3 class="info-title">*me*</h3>
-            <h3 class="info-title">Its running!</h3>
-        </div>
+    <div class="info-container" id="firstContainer">
+        <h1>Hello! Welcome to the Henchmen ATE for Chris' API UI!</h1>
+        <p>This is the API interface for the ATE project. Below are the functions to start the pipeline and compare the results to the rawtime data.</p>
+    </div>
+    <div class="button-container" id="buttonContainer">
 
-        <div class="description-container">
-            <h3 class="info-title">*The program*</h3>
-            <img class="image-container" src="https://i.kym-cdn.com/entries/icons/original/000/027/475/Screen_Shot_2018-10-25_at_11.02.15_AM.png" alt="wtf">
+    </div>
+    <div class="info-container" id="console-container">
+        <div class="button_container" id="console-container__console">
+            
         </div>
+        <div id="console"></div>
     </div>
 </body>
 </html>

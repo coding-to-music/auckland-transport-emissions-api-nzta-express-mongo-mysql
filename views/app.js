@@ -6,6 +6,7 @@ const express = require('../node_modules/express')
 const app = express();
 const bodyParser = require("../node_modules/body-parser");
 const router = express.Router();
+const http = require('http'); 
 
 const path = require('../node_modules/path');
 const csv = require('../node_modules/csv-parser');
@@ -602,7 +603,7 @@ client.connect(async (err, db) => {
             await dbo.collection(config.FINAL_SCHEDULE_COL).createIndex({ "trip_id": 1 }, { unique: true });
             await dbo.collection(config.FINAL_SCHEDULE_COL).createIndex({ "service_days.start_date": 1 });
             console.log("Finished! :D");
-            res.send(modDocs);
+            res.send("Pipeline has been successful, yay!! You may now use the comparison functions, or open this data elsewhere");
           });
         })
       })
@@ -612,9 +613,9 @@ client.connect(async (err, db) => {
   // Get the raw realtime data provided by the AT API
   // Creates a local copy of each day.
   // Query Params: 
-  // download=true: download local copy
-  // dates=: a date or range of dates for the data to fall between (inclusive)
-  // in form [{1} DD/MM/YYY{1} [, DD/MM/YY]? ]{1} (<--regex)
+  //    download=true: download local copy
+  //    dates=: a date or range of dates for the data to fall between (inclusive)
+  // in form [{1} DD/MM/YYYY{1} [, DD/MM/YYYY]? ]{1} (<--regex)
   app.get("/get_raw_data", async (req, res) => {
     let returnData = [];
     let dates = req.query.dates != undefined ? formDateArrayFromQuery(req.query.dates) : formDateArray();
@@ -633,14 +634,16 @@ client.connect(async (err, db) => {
       }
     }
     res.send(returnData);
+    // let a = res.write("bitches", 'utf-8');
+    // let b = res.write("bitches", 'utf-8');
+    // console.log(a);
+    // res.end("5");
   })
 
   app.post('/postThat', (req, res) => {
     //code to perform particular action.
-    //To access POST variable use req.body()methods.
+    //To access POST variable use req.body() methods.
     console.log(req.body);
-
-
   })
 
   app.get('/generate_schedule_distances', async (req, res) => {
@@ -773,7 +776,6 @@ client.connect(async (err, db) => {
 })
 
 // add router in the Express app.
-
 app.listen(config.port, () => {
   console.log(`Express App running at http://localhost:${config.port}`);
 })

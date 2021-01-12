@@ -1,0 +1,9 @@
+#console {
+    width: 800px;
+    height: 400px;
+    background: #575757;
+    color: white;
+    margin: 30px auto;
+    padding: 10px;
+    overflow: auto;
+}
