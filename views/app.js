@@ -6,6 +6,7 @@ const express = require('../node_modules/express')
 const app = express();
 const bodyParser = require("../node_modules/body-parser");
 const router = express.Router();
+const http = require('http'); 
 
 const path = require('../node_modules/path');
 const csv = require('../node_modules/csv-parser');
@@ -599,7 +600,7 @@ client.connect(async (err, db) => {
             await dbo.collection(config.FINAL_SCHEDULE_COL).createIndex({ "trip_id": 1 }, { unique: true });
             await dbo.collection(config.FINAL_SCHEDULE_COL).createIndex({ "service_days.start_date": 1 });
             console.log("Finished! :D");
-            res.send(modDocs);
+            res.send("Pipeline has been successful, yay!! You may now use the comparison functions, or open this data elsewhere");
           });
         })
       })
@@ -615,7 +616,6 @@ client.connect(async (err, db) => {
   app.get("/get_raw_data", async (req, res) => {
     let returnData = [];
     let dates = req.query.dates != undefined ? formDateArrayFromQuery(req.query.dates) : formDateArray();
-    console.log(dates);
     for (let date of dates) {
       let data = await dbo.collection("realtime_raw").find({"date" : date}).toArray();
       returnData.push(data);
@@ -631,6 +631,10 @@ client.connect(async (err, db) => {
       }
     }
     res.send(returnData);
+    // let a = res.write("bitches", 'utf-8');
+    // let b = res.write("bitches", 'utf-8');
+    // console.log(a);
+    // res.end("5");
   })
 
   app.post('/postThat', (req, res) => {

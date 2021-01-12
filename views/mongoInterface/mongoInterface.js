@@ -40,6 +40,7 @@ function init() {
  */ 
 async function generateSchedule() {
   html.log("Generating schedule from AT API");
+  await getFrom(URL + "/generate_schedule");
 }
 
 async function downloadRawData() {
@@ -49,12 +50,12 @@ async function downloadRawData() {
   let searchURL = URL + "/get_raw_data?download=true";
   if (DATES != null) {
     searchURL = searchURL + "&dates=[" + DATES[0];
-    console.log(DATES[1]);
     searchURL = DATES[1] != "undefined/undefined/" ? searchURL + "," + DATES[1] : searchURL;
-    searchURL = searchURL + "]"
+    searchURL = searchURL + "]";
   }
   console.log(searchURL);
   let f = await getFrom(searchURL);
+  console.log(f);
   html.log(f);
 }
 
