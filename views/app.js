@@ -612,7 +612,7 @@ client.connect(async (err, db) => {
   // Query Params: 
   //    download=true: download local copy
   //    dates=: a date or range of dates for the data to fall between (inclusive)
-  // in form [{1} DD/MM/YYY{1} [, DD/MM/YY]? ]{1} (<--regex)
+  // in form [{1} DD/MM/YYYY{1} [, DD/MM/YYYY]? ]{1} (<--regex)
   app.get("/get_raw_data", async (req, res) => {
     let returnData = [];
     let dates = req.query.dates != undefined ? formDateArrayFromQuery(req.query.dates) : formDateArray();
