@@ -23,6 +23,7 @@ function init() {
   generateScheduleButton.innerHTML = "Generate Schedule";
   downloadRawDataButton.innerHTML = "Download Raw Data";
 
+  compareUUIDsButton.onclick = compareUUIDs;
   rawToFinalButton.onclick = compareFinalToRaw;
   finalToRawButton.onclick = compareRawToFinal;
   generateScheduleButton.onclick = generateSchedule;
