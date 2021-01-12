@@ -640,6 +640,39 @@ client.connect(async (err, db) => {
     // res.end("5");
   })
 
+  // Dedicated endpoint to clean the dataset. Will incorporate to generate_schedule
+  // endpoint above once comparison for distance and expected stop etc is finished.
+  app.get("/refine_data", async (req, res) => {
+    // NOTE: this could be done at lookup stage if memory 
+    // allocation in DB begins to be a problem
+        await dbo.collection("final_trip_UUID_set").aggregate([
+          {
+            "$addFields": {
+              "agency_id": "$routes.agency_id",
+              "route_short_name": "$routes.route_short_name",
+              "route_long_name": "$routes.route_long_name",
+              "route_type": "$routes.route_type",
+              "calendar_services": {
+                "start_date": "$service_days.start_date",
+                "end_date": "$service_days.end_date",
+                "monday": "$service_days.monday",
+                "tuesday": "$service_days.tuesday",
+                "wednesday": "$service_days.wednesday",
+                "thursday": "$service_days.thursday",
+                "friday": "$service_days.friday",
+                "saturday": "$service_days.saturday",
+                "sunday": "$service_days.sunday",
+              }
+            }
+          },
+          {
+            "$unset": ["routes", "service_days"]
+          },
+          { "$out": "final_trip_UUID_set" }
+        ]).toArray();
+        console.log("We have finished cleaning the dataset for use.");
+  })
+
   app.post('/postThat', (req, res) => {
     //code to perform particular action.
     //To access POST variable use req.body() methods.
