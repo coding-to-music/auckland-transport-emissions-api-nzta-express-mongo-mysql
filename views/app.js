@@ -6,7 +6,7 @@ const express = require('../node_modules/express')
 const app = express();
 const bodyParser = require("../node_modules/body-parser");
 const router = express.Router();
-const http = require('http'); 
+const http = require('http');
 
 const path = require('../node_modules/path');
 const csv = require('../node_modules/csv-parser');
@@ -33,6 +33,7 @@ const SQLPool = new SQLManagement();
 
 const MongoClient = require('../node_modules/mongodb').MongoClient;
 const { Console } = require('console');
+const { FINAL_SCHEDULE_COL } = require('../config.js');
 const client = new MongoClient(config.mongodb.uri, { useUnifiedTopology: true });
 
 app.use(express.static(path.join('public')));
@@ -76,24 +77,24 @@ client.connect(async (err, db) => {
   async function extractIDSFromSchedule(date) {
     await getSchedule();
     let scheduled_trips = config.SCHEDULE;
-      let UUIDArray = new Set();
-      let tripArray = new Set();
-        for (let trip of scheduled_trips) {
-          //Log the trip array for comparison later
-          //TODO could be within lower forloop
-          //Should still lineup
-          tripArray.add(trip.trip_id);
-          //Grab UUIDs corresponding to date + trip_id
-          for (let journey of trip.UUID) {
-            if (journey.startsWith(date)) {
-              UUIDArray.add(journey);
-            }
-          }
+    let UUIDArray = new Set();
+    let tripArray = new Set();
+    for (let trip of scheduled_trips) {
+      //Log the trip array for comparison later
+      //TODO could be within lower forloop
+      //Should still lineup
+      tripArray.add(trip.trip_id);
+      //Grab UUIDs corresponding to date + trip_id
+      for (let journey of trip.UUID) {
+        if (journey.startsWith(date)) {
+          UUIDArray.add(journey);
         }
-  
+      }
+    }
+
     return {
-      UUIDs : Array.from(UUIDArray),
-      trip_ids : Array.from(tripArray)
+      UUIDs: Array.from(UUIDArray),
+      trip_ids: Array.from(tripArray)
     }
   }
 
@@ -230,18 +231,18 @@ client.connect(async (err, db) => {
 
     let raw = await dbo.collection("raw_w_routes")
       .find({
-        "date" : {"$gte": "20201223","$lte": "20201229"},
+        "date": { "$gte": "20201223", "$lte": "20201229" },
       }, {}).toArray();
     let UUIDsRaw = raw.map(d => {
       return d.UUID;
     })
     let scheduleByRaw = await dbo.collection(config.FINAL_SCHEDULE_COL)
       .aggregate([{
-        "$match" : {
-          "UUID" : {"$in" : UUIDsRaw},
+        "$match": {
+          "UUID": { "$in": UUIDsRaw },
         }
       }
-    ], {}).toArray();
+      ], {}).toArray();
     let scheduleByRawUUIDs = new Set();
     for (let trip of scheduleByRaw) {
       for (let journey of trip.UUID) {
@@ -266,16 +267,16 @@ client.connect(async (err, db) => {
     let rawBySchedule = await dbo.collection("raw_w_routes")
       .aggregate([
         {
-          "$match" : {
-            "UUID" : {"$in" : UUIDsSchedule},
-            "date" : {"$gte": "20201223","$lte": "20201229"},
+          "$match": {
+            "UUID": { "$in": UUIDsSchedule },
+            "date": { "$gte": "20201223", "$lte": "20201229" },
           }
         },
       ], {}).toArray();
     console.log("UUIDS in Schedule", UUIDsSchedule.length);
     console.log("UUIDs in Raw", rawBySchedule.length);
   })
-  
+
   // Get a day by day comparison of the trips in the schedule as the base table, and
   // whether or not their UUIDs are present in the realtime.
   // Take all the UUIDs from the schedule and compare
@@ -297,7 +298,7 @@ client.connect(async (err, db) => {
         noEntry: 0,
         Entry: 0
       };
-      
+
       let IDS = await extractIDSFromSchedule(date);
       let UUIDArray = IDS.UUIDs, tripArray = IDS.trip_ids;
       console.log("Number of journeys in schedule for " + date + ":", UUIDArray.length)
@@ -308,20 +309,20 @@ client.connect(async (err, db) => {
       //            .concat(tripArray.filter(x => !UUIDArray.map(d => {return d.split("-")[1] + "-" + d.split("-")[2]}).includes(x)));
       // console.log(difference);
 
-    //Find all the trips from the schedule trip_id
+      //Find all the trips from the schedule trip_id
       //in the realtimedata
       let pipeline = [
         {
           "$match": {
-            "$and" :[
-              {"date" : date},
-              {"UUID": { "$in": UUIDArray }},
+            "$and": [
+              { "date": date },
+              { "UUID": { "$in": UUIDArray } },
             ]
           }
         }
       ]
 
-      await dbo.collection("raw_w_routes").aggregate(pipeline, {}).toArray().then(async function(docs) {
+      await dbo.collection("raw_w_routes").aggregate(pipeline, {}).toArray().then(async function (docs) {
         console.log("Realtime trips by UUID: ", docs);
         for (let doc of docs) {
           if (doc.length === 0) results.noEntry = results.noEntry + 1;
@@ -338,13 +339,13 @@ client.connect(async (err, db) => {
           }
         },
         {
-          "$match" : {
-            "raw_w_route_id.0.agency_id" : "GBT"
+          "$match": {
+            "raw_w_route_id.0.agency_id": "GBT"
           }
         }
       ]
 
-      await dbo.collection("raw_w_routes").aggregate(pipeline2, {}).toArray().then(async function(docs) {
+      await dbo.collection("raw_w_routes").aggregate(pipeline2, {}).toArray().then(async function (docs) {
         console.log("Realtime trips by UUID for GBT: ", docs);
         //Get the calendarDate exceptions of those missing from UUID set
         //to see what exception type they are
@@ -358,14 +359,14 @@ client.connect(async (err, db) => {
         //Find the exceptions in calendar exceptions
         let pipe = [
           {
-            "$match" : {
-              "service_id" : {"$in" : service_ids}
+            "$match": {
+              "service_id": { "$in": service_ids }
             }
           },
           {
-            "$group" : {
-              "_id" : "$exception_type",
-              "count" : {"$sum" : 1}
+            "$group": {
+              "_id": "$exception_type",
+              "count": { "$sum": 1 }
             }
           }
         ]
@@ -383,13 +384,13 @@ client.connect(async (err, db) => {
           }
         },
         {
-          "$match" : {
-            "raw_w_route_id.0.agency_id" : "RTH"
+          "$match": {
+            "raw_w_route_id.0.agency_id": "RTH"
           }
         }
       ]
 
-      await dbo.collection("raw_w_routes").aggregate(pipeline3, {}).toArray().then(function(docs) {
+      await dbo.collection("raw_w_routes").aggregate(pipeline3, {}).toArray().then(function (docs) {
         console.log("Realtime trips by UUID for RTH: ", docs);
       })
     }
@@ -417,9 +418,9 @@ client.connect(async (err, db) => {
       };
       let inArray = [];
       // for (let date in realtime_trips) {
-        for (let trip of realtime_trips[date]) {
-          inArray.push(trip.UUID);
-        }
+      for (let trip of realtime_trips[date]) {
+        inArray.push(trip.UUID);
+      }
       // }
       console.log(inArray.length);
 
@@ -428,11 +429,11 @@ client.connect(async (err, db) => {
       let pipeline = [
         {
           "$match": {
-            "$and" : [
-              {UUID: { "$nin": inArray }},
-              {UUID: { "$regex": regex }}
+            "$and": [
+              { UUID: { "$nin": inArray } },
+              { UUID: { "$regex": regex } }
             ]
-              
+
           }
         },
       ]
@@ -453,6 +454,7 @@ client.connect(async (err, db) => {
   // Overwrites: (raw_w_routes), (filtered_trips), (filtered_trips), (final_trip_UUID_set)
   // Send the generated info back to the requester
   app.get("/generate_schedule", async (req, res) => {
+    // ************************ FORM RAW DATA ************************
     let dateToCheck = formDateArray();
     let trips = dbo.collection("realtime_raw");
 
@@ -484,12 +486,14 @@ client.connect(async (err, db) => {
       allowDiskUse: 1
     };
 
+    console.log("Generating raw_w_routes for filtering...");
     await trips.aggregate(lookup, options).toArray(async (err, docs) => {
       if (err) throw err;
-      await dbo.collection("raw_w_routes").createIndex({ "date" : 1 }).then(() => {console.log("Indexes created")});
+      await dbo.collection("raw_w_routes").createIndex({ "date": 1 }).then(() => { console.log("Indexes created") });
       console.log("Collection raw_w_routes has been created!");
     })
 
+    // ************************ ADD DATA TO SCHEDULE ************************
     console.log("Starting schedule dataset generation pipeline")
     //Get info from calendar    
     //Add routes
@@ -511,11 +515,9 @@ client.connect(async (err, db) => {
         "$out": "filtered_trips"
       }
     ]
-    
-    let c2 = dbo.collection("filtered_trips");
 
-    await c2.createIndex({ "service_id": 1 });
-    await dbo.collection("calendar").createIndex({"service_id" : 1});
+    await dbo.collection("filtered_trips").createIndex({ "service_id": 1 });
+    await dbo.collection("calendar").createIndex({ "service_id": 1 });
 
     //Add calendar days
     let pipe2 = [
@@ -535,79 +537,107 @@ client.connect(async (err, db) => {
     await dbo.collection("trips").aggregate(pipe, options).toArray(async (err, docs) => {
       if (err) throw err;
       console.log("Added filtered route information to schedule_trips, written to filtered_trips");
-      await dbo.collection("filtered_trips").aggregate(pipe2, options).toArray(async (err, docs) => {
-        if (err) throw err;
-        console.log("Added filtered calendar information to filtered_trips, written to filtered_trips");
-        
-        let c3 = dbo.collection("filtered_trips");
-
-        let excss = await dbo.collection("calendarDate").aggregate([
-          {
-            "$match" : {
-              "date" : {"$gte": "2020-12-22T00:00:00.000Z","$lte": "2021-01-23T00:00:00.000Z" },
-            }
-          },
-          {
-          "$group" : {
-            "_id" : "$service_id",
-            "exceptionDates" : {
-              "$push" : {
-                "exception_type" : "$exception_type", 
-                "date" : "$date"
-              }
-            }
-          }
-        }], {}).toArray();
-
-
-        let service_ids = [];
-        for (let e of excss) {
-          service_ids.push(e._id);
-        }
-        console.log("Service ids derived" , service_ids);
-        console.log("calendarExceptions" , excss);
-
-        await c3.find({
-          // "service_id": { "$in": service_ids },
-          "service_days.start_date": { "$gte": "2020-12-22T00:00:00.000Z"} , 
-          "service_days.end_date" : { "$lte": "2021-01-23T00:00:00.000Z" },
-        }, {}).toArray(async (err, docs) => {
-          if (err) throw err;
-          //Check every journey entry
-          let modDocs = [];
-          for (let entry of docs) {
-            //Filter exceptions to match current journey service id
-            let exceptions = [];
-            for (e of excss) {
-              if (e._id === entry.service_id) {
-                exceptions.push(e);
-              }
-            }
-
-            entry.UUID = new Set();
-            //First add the normal calendar and exceptions from calendarDates
-            entry = formUUIDsFromCalendar(entry, exceptions);
-            // Next, check if we need to add the UUID due to exception in calendarDate
-            entry = formUUIDsFromCalendarDates(entry, exceptions);
-            //Final convert the set to an array
-            entry.UUID = Array.from(entry.UUID);
-            modDocs.push(entry);
-          }
-
-          console.log(modDocs);
-
-          await dbo.collection(config.FINAL_SCHEDULE_COL).insertMany(modDocs, async (err, results) => {
-            if (err) throw err;
-            console.log(results);
-            //Create indexes for  this collection
-            await dbo.collection(config.FINAL_SCHEDULE_COL).createIndex({ "trip_id": 1 }, { unique: true });
-            await dbo.collection(config.FINAL_SCHEDULE_COL).createIndex({ "service_days.start_date": 1 });
-            console.log("Finished! :D");
-            res.send("Pipeline has been successful, yay!! You may now use the comparison functions, or open this data elsewhere");
-          });
-        })
-      })
     })
+
+    await dbo.collection("filtered_trips").aggregate(pipe2, options).toArray(async (err, docs) => {
+      if (err) throw err;
+      console.log("Added filtered calendar information to filtered_trips, written to filtered_trips");
+    })
+
+    // ************************ GET EXCEPTIONS ************************
+    let excss = await dbo.collection("calendarDate").aggregate([
+      {
+        "$match": {
+          "date": { "$gte": "2020-12-22T00:00:00.000Z", "$lte": "2021-01-23T00:00:00.000Z" },
+        }
+      },
+      {
+        "$group": {
+          "_id": "$service_id",
+          "exceptionDates": {
+            "$push": {
+              "exception_type": "$exception_type",
+              "date": "$date"
+            }
+          }
+        }
+      }], {}).toArray();
+
+
+    let service_ids = [];
+    for (let e of excss) {
+      service_ids.push(e._id);
+    }
+    // ************************ FORM NEW UUIDS WITH EXCPETIONS ************************
+    //New docs with UUIDs to add
+    let modDocs = [];
+    await dbo.collection("filtered_trips").find({
+      "service_days.start_date": { "$gte": "2020-12-22T00:00:00.000Z" },
+      "service_days.end_date": { "$lte": "2021-01-23T00:00:00.000Z" },
+    }, {}).toArray(async (err, docs) => {
+      if (err) throw err;
+      //Check every journey entry
+      for (let entry of docs) {
+        //Filter exceptions to match current journey service id
+        let exceptions = [];
+        for (e of excss) {
+          if (e._id === entry.service_id) {
+            exceptions.push(e);
+          }
+        }
+
+        entry.UUID = new Set();
+        //First add the normal calendar and exceptions from calendarDates
+        entry = formUUIDsFromCalendar(entry, exceptions);
+        // Next, check if we need to add the UUID due to exception in calendarDate
+        entry = formUUIDsFromCalendarDates(entry, exceptions);
+        //Final convert the set to an array
+        entry.UUID = Array.from(entry.UUID);
+        modDocs.push(entry);
+      }
+    })
+    // ************************ POST DATA TO MONGO ************************
+    await dbo.collection(config.FINAL_SCHEDULE_COL).updateMany(modDocs, async (err, results) => {
+      if (err) throw err;
+      console.log(results);
+      //Create indexes for  this collection
+      await dbo.collection(config.FINAL_SCHEDULE_COL).createIndex({ "trip_id": 1 }, { unique: true });
+      await dbo.collection(config.FINAL_SCHEDULE_COL).createIndex({ "service_days.start_date": 1 });
+      console.log("Posting schedule set complete, cleaning data...");
+    });
+
+    // ************************ CLEAN DATA IN MONGO ************************
+    // NOTE: this could be done at lookup stage if memory 
+    // allocation in DB begins to be a problem
+    await dbo.collection("final_trip_UUID_set").aggregate([
+      {
+        "$addFields": {
+          "agency_id": "$routes.agency_id",
+          "route_short_name": "$routes.route_short_name",
+          "route_long_name": "$routes.route_long_name",
+          "route_type": "$routes.route_type",
+          "calendar_services": {
+            "start_date": "$service_days.start_date",
+            "end_date": "$service_days.end_date",
+            "monday": "$service_days.monday",
+            "tuesday": "$service_days.tuesday",
+            "wednesday": "$service_days.wednesday",
+            "thursday": "$service_days.thursday",
+            "friday": "$service_days.friday",
+            "saturday": "$service_days.saturday",
+            "sunday": "$service_days.sunday",
+          }
+        }
+      },
+      {
+        "$unset": ["routes", "service_days"]
+      },
+      { "$out": config.FINAL_SCHEDULE_COL }
+    ]).toArray();
+    console.log("We have finished cleaning the dataset for use 🙌");
+
+    // Tell the user we done
+    res.send("Pipeline has been successful, yay!! You may now use the comparison functions, or open this data elsewhere");
   })
 
   // Get the raw realtime data provided by the AT API
@@ -620,7 +650,7 @@ client.connect(async (err, db) => {
     let returnData = [];
     let dates = req.query.dates != undefined ? formDateArrayFromQuery(req.query.dates) : formDateArray();
     for (let date of dates) {
-      let data = await dbo.collection("realtime_raw").find({"date" : date}).toArray();
+      let data = await dbo.collection("realtime_raw").find({ "date": date }).toArray();
       returnData.push(data);
       if (req.query.download === 'true') {
         try {
@@ -630,7 +660,7 @@ client.connect(async (err, db) => {
           console.log("File does not exist ¯\\_(ツ)_/¯, creating...");
           fs.appendFileSync("./dataBackups/realtime_raw_" + date, JSON.stringify(data));
         }
-        console.log(date + " has been downloaded and written to dataBackups!");  
+        console.log(date + " has been downloaded and written to dataBackups!");
       }
     }
     res.send(returnData);
@@ -640,37 +670,31 @@ client.connect(async (err, db) => {
     // res.end("5");
   })
 
-  // Dedicated endpoint to clean the dataset. Will incorporate to generate_schedule
-  // endpoint above once comparison for distance and expected stop etc is finished.
-  app.get("/refine_data", async (req, res) => {
-    // NOTE: this could be done at lookup stage if memory 
-    // allocation in DB begins to be a problem
-        await dbo.collection("final_trip_UUID_set").aggregate([
-          {
-            "$addFields": {
-              "agency_id": "$routes.agency_id",
-              "route_short_name": "$routes.route_short_name",
-              "route_long_name": "$routes.route_long_name",
-              "route_type": "$routes.route_type",
-              "calendar_services": {
-                "start_date": "$service_days.start_date",
-                "end_date": "$service_days.end_date",
-                "monday": "$service_days.monday",
-                "tuesday": "$service_days.tuesday",
-                "wednesday": "$service_days.wednesday",
-                "thursday": "$service_days.thursday",
-                "friday": "$service_days.friday",
-                "saturday": "$service_days.saturday",
-                "sunday": "$service_days.sunday",
-              }
-            }
-          },
-          {
-            "$unset": ["routes", "service_days"]
-          },
-          { "$out": "final_trip_UUID_set" }
-        ]).toArray();
-        console.log("We have finished cleaning the dataset for use.");
+  // Get the processed schedule data provided by the AT API
+  // Creates a local copy of each day.
+  // Query Params: 
+  //    download=true: download local copy
+  //    dates=: a date or range of dates for the data to fall between (inclusive)
+  // in form [{1} DD/MM/YYYY{1} [, DD/MM/YYYY]? ]{1} (<--regex)
+  app.get("/get_processed_schedule", async (req, res) => {
+    let returnData = [];
+    let dates = req.query.dates != undefined ? formDateArrayFromQuery(req.query.dates) : formDateArray();
+    for (let date of dates) {
+      console.log("Querying collection...");
+      let data = await dbo.collection(config.FINAL_SCHEDULE_COL).find({ "UUID": {"$regex" : new RegExp("^" + date) } }).toArray();
+      returnData.push(data);
+      if (req.query.download === 'true') {
+        try {
+          console.log("Attempting to overwrite existing file");
+          fs.writeFileSync("./dataBackups/processed_schedule_" + date, JSON.stringify(data))
+        } catch (err) {
+          console.log("File does not exist ¯\\_(ツ)_/¯, creating...");
+          fs.appendFileSync("./dataBackups/processed_schedule_" + date, JSON.stringify(data));
+        }
+        console.log(date + " has been downloaded and written to dataBackups!");
+      }
+    }
+    res.send(returnData);
   })
 
   app.post('/postThat', (req, res) => {
@@ -686,9 +710,9 @@ client.connect(async (err, db) => {
     console.log("Starting aggregate")
 
     let lookup = [
-      { "$limit" : 150 }, // Limit on API requests for testing
+      { "$limit": 150 }, // Limit on API requests for testing
       {
-        "$match" : { "distance" : { "$exists" : false } }
+        "$match": { "distance": { "$exists": false } }
       }
     ]
 
@@ -698,20 +722,20 @@ client.connect(async (err, db) => {
 
     let noDistanceTrips = await scheduleTrips.aggregate(lookup, options).toArray();
 
-    let allTripIDs = noDistanceTrips.map( data => data.trip_id );
+    let allTripIDs = noDistanceTrips.map(data => data.trip_id);
 
     let i = 0;
     let interval = 50;
 
     while (i < allTripIDs.length) {
-      let endIndex = Math.min(i+interval, allTripIDs.length);
+      let endIndex = Math.min(i + interval, allTripIDs.length);
       let selectIDs = allTripIDs.slice(i, endIndex);
       console.log(new Date + "   " + selectIDs[0] + "  " + i + " out of " + allTripIDs.length);
 
       // Use trip_ids to retrieve shape files
       let apiResponseArr = await getMultipleATAPI("https://api.at.govt.nz/v2/gtfs/shapes/tripId/", selectIDs);
-      apiResponseArr = apiResponseArr.map( (data) => data.response );
-      
+      apiResponseArr = apiResponseArr.map((data) => data.response);
+
       let distanceJSON = formatTripDistance(apiResponseArr, selectIDs);
 
       if (distanceJSON.length == 0) { i += interval; continue; }; // Something went wrong in formatting it
@@ -721,9 +745,9 @@ client.connect(async (err, db) => {
         bulk.find({
           "trip_id": each.tripID
         }).updateOne({
-          "$set" : {
-            "distance" : each.distance,
-            "shape_id" : each.shapeID
+          "$set": {
+            "distance": each.distance,
+            "shape_id": each.shapeID
           }
         });
       }
@@ -747,9 +771,9 @@ client.connect(async (err, db) => {
     console.log("Starting aggregate")
 
     let lookup = [
-      { "$limit" : 150 }, // Limit on API requests for testing
+      { "$limit": 150 }, // Limit on API requests for testing
       {
-        "$match" : { "number_stops" : { "$exists" : false } }
+        "$match": { "number_stops": { "$exists": false } }
       }
     ]
 
@@ -759,39 +783,39 @@ client.connect(async (err, db) => {
 
     let noTimeTrips = await scheduleTrips.aggregate(lookup, options).toArray();
 
-    let allTripIDs = noTimeTrips.map( data => data.trip_id );
+    let allTripIDs = noTimeTrips.map(data => data.trip_id);
 
     let i = 0;
     let interval = 50;
 
     while (i < allTripIDs.length) {
-      let endIndex = Math.min(i+interval, allTripIDs.length);
+      let endIndex = Math.min(i + interval, allTripIDs.length);
       let selectIDs = allTripIDs.slice(i, endIndex);
       console.log(new Date + "   " + selectIDs[0] + "  " + i + " out of " + allTripIDs.length);
 
       // Use trip_ids to retrieve stop sequences 
       let apiResponseArr = await getMultipleATAPI("https://api.at.govt.nz/v2/gtfs/stopTimes/tripId/", selectIDs);
-      apiResponseArr = apiResponseArr.map( (data) => data.response );
-      
-      // Retrieve total number of stops for a given route
-      let stopDataJSON = apiResponseArr.map( function(stopSequence, index) {
+      apiResponseArr = apiResponseArr.map((data) => data.response);
 
-        if(stopSequence.length == 0) { // Check for valid response
-          return {"tripID" : selectIDs[index], "numberStops" : null};
+      // Retrieve total number of stops for a given route
+      let stopDataJSON = apiResponseArr.map(function (stopSequence, index) {
+
+        if (stopSequence.length == 0) { // Check for valid response
+          return { "tripID": selectIDs[index], "numberStops": null };
         }
 
         let id = stopSequence[0].trip_id;
         let noStops = stopSequence.length;
 
-        return {"tripID" : id, "numberStops" : noStops};
-      } );
+        return { "tripID": id, "numberStops": noStops };
+      });
 
       let bulk = scheduleTrips.initializeUnorderedBulkOp();
       for (let each of stopDataJSON) {
         bulk.find({
           "trip_id": each.tripID
         }).updateOne({
-          "$set" : { "number_stops" : each.numberStops }
+          "$set": { "number_stops": each.numberStops }
         });
       }
       //Call execute
@@ -935,7 +959,7 @@ function formDateArrayFromQuery(queryDates) {
     console.log(err);
     console.log("An error occured ¯\\_(ツ)_/¯, likely a misformed date array. Please try again.");
   }
-  
+
   return dates;
 }
 
@@ -956,24 +980,24 @@ function formGetQuery(endpoint, args) {
   return string;
 }
 
-function arr_diff (a1, a2) {
+function arr_diff(a1, a2) {
 
   var a = [], diff = [];
 
   for (var i = 0; i < a1.length; i++) {
-      a[a1[i]] = true;
+    a[a1[i]] = true;
   }
 
   for (var i = 0; i < a2.length; i++) {
-      if (a[a2[i]]) {
-          delete a[a2[i]];
-      } else {
-          a[a2[i]] = true;
-      }
+    if (a[a2[i]]) {
+      delete a[a2[i]];
+    } else {
+      a[a2[i]] = true;
+    }
   }
 
   for (var k in a) {
-      diff.push(k);
+    diff.push(k);
   }
 
   return diff;
@@ -1000,11 +1024,11 @@ const fetchConfig = {
 
 async function getMultipleATAPI(url, rtrvTripIDs) {
   let responseArr = [];
-  
-  await new Promise( function(resolve) {
+
+  await new Promise(function (resolve) {
     let j = 0;
     let cancelInt = setInterval(() => {
-      let data = fetch(url + rtrvTripIDs[j], fetchConfig).then( (data) => data.json() );
+      let data = fetch(url + rtrvTripIDs[j], fetchConfig).then((data) => data.json());
       responseArr.push(data);
       j++;
       if (j == rtrvTripIDs.length) {
@@ -1027,17 +1051,17 @@ async function getMultipleATAPI(url, rtrvTripIDs) {
 
 function formatTripDistance(responseArr, tripIDs) {
   let tripData = [];
-  if( responseArr.length != tripIDs.length) {
+  if (responseArr.length != tripIDs.length) {
     console.log("You've made an error somewhere, Shape and ID arrays not equal lengths");
     return [];
   }
   for (let i = 0; i < tripIDs.length; i++) {
-    if(responseArr[i].length != 0) {
+    if (responseArr[i].length != 0) {
       let distance = calcShapeDist(responseArr[i]);
       let shapeID = responseArr[i][0].shape_id;
-      tripData.push({"tripID" : tripIDs[i], "shapeID" : shapeID, "distance" : distance});
+      tripData.push({ "tripID": tripIDs[i], "shapeID": shapeID, "distance": distance });
     } else {
-      tripData.push({"tripID" : tripIDs[i], "shapeID" : null, "distance" : -1});
+      tripData.push({ "tripID": tripIDs[i], "shapeID": null, "distance": -1 });
     }
   }
   return tripData
@@ -1054,8 +1078,8 @@ function calcShapeDist(shape) {
   for (let i = 0; i < shape.length - 1; i++) {
     lonA = shape[i].shape_pt_lon;
     latA = shape[i].shape_pt_lat;
-    lonB = shape[i+1].shape_pt_lon;
-    latB = shape[i+1].shape_pt_lat;
+    lonB = shape[i + 1].shape_pt_lon;
+    latB = shape[i + 1].shape_pt_lat;
     distance += geolib.getDistance([lonA, latA], [lonB, latB]);
   }
   return distance;
