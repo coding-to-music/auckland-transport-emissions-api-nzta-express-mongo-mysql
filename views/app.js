@@ -737,6 +737,7 @@ client.connect(async (err, db) => {
     let stopsFromRaw = await dbo.collection("raw_w_routes").find({}, {}).toArray();
     console.log(stopsFromRaw);
     for (let journey of stopsFromRaw) {
+      // LOAD SHAPE FILE FROM SHAPE ID
       if (journey.stop_sequence != stopsByTripID[journey.trip_id].stops) {
         notMatching.push(journey);
         if (journey.arrived) {
@@ -752,6 +753,7 @@ client.connect(async (err, db) => {
     }
     for (let journey of notMatching) {
       //*********************TODO FIX THIS LINE!!!!*********************
+      // LOAD SHAPE FILE FROM SHAPE ID
       journey.distance = stopsByTripID[journey.trip_id].distance;
     }
     res.send(notMatching);
