@@ -38,7 +38,7 @@ function init() {
 
   // Compare stop sequence to see distances
   let compareStopSequence = document.createElement("BUTTON");
-  compareStopSequence.innerHTML = "Compare Stop Seqeunces";
+  compareStopSequence.innerHTML = "Update distances for realtime";
   compareStopSequence.onclick = compareStopSequences;
   element2[0].appendChild(compareStopSequence);
 
@@ -94,9 +94,8 @@ async function compareUUIDs() {
 
 async function compareStopSequences() {
   html.log("Starting the stop sequence comparison pipeline");
-  let compareStop = await getFrom(URL + "/compare_stops");
-  html.log("Journeys from realtime without matching stop sequence:")
-  html.log(compareStop)
+  let missingStopInfo = await getFrom(URL + "/compare_stops");
+  html.log("Journeys from realtime without matching stop sequence has been loaded.");
 }
 
 function createDatePickers() {

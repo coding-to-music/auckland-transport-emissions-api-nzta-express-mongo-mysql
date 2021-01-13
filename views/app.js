@@ -718,11 +718,18 @@ client.connect(async (err, db) => {
 
   // Get all the stop sequences (number_stops) from the schedule and compare to the realtime observed data
   // Takes a long time to resolve
+  // We need to take both of the entries from both of the datasets, take this value and 
+  // enter into raw_w_routes
   app.get("/compare_stops", async (req, res) => {
     let stopsFromSchedule = await dbo.collection("final_trip_UUID_set").find({}).toArray();
     let stopsByTripID = {};
     for (let trip of stopsFromSchedule) {
-      stopsByTripID[trip.trip_id] = trip.number_stops;
+      stopsByTripID[trip.trip_id] = 
+        { 
+          "stops" : trip.number_stops,
+          "distance" : trip.distance,
+          "shape" : trip.shape_id
+        }
     }
     console.log(stopsByTripID);
     let notMatching = [];
@@ -730,7 +737,7 @@ client.connect(async (err, db) => {
     let stopsFromRaw = await dbo.collection("raw_w_routes").find({}, {}).toArray();
     console.log(stopsFromRaw);
     for (let journey of stopsFromRaw) {
-      if (journey.stop_sequence != stopsByTripID[journey.trip_id]) {
+      if (journey.stop_sequence != stopsByTripID[journey.trip_id].stops) {
         notMatching.push(journey);
         if (journey.arrived) {
           arrived = false;
@@ -738,6 +745,15 @@ client.connect(async (err, db) => {
       }
     }
     console.log(notMatching, arrived);
+    let inverse = stopsFromRaw.filter(d => !notMatching.includes(d)).map(d => {return d.UUID});
+    let rawCorrectStops = await dbo.collection("raw_w_routes").find({UUID : {"$in" : inverse}}).toArray();
+    for (let journey of rawCorrectStops) {
+      journey.distance = calcShapeDist(stopsByTripID[journey.trip_id].shape_id);
+    }
+    for (let journey of notMatching) {
+      //*********************TODO FIX THIS LINE!!!!*********************
+      journey.distance = stopsByTripID[journey.trip_id].distance;
+    }
     res.send(notMatching);
   })
 
