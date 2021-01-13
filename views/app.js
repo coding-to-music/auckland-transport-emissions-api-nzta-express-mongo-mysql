@@ -673,8 +673,9 @@ client.connect(async (err, db) => {
   // Get the processed schedule data provided by the AT API
   // Creates a local copy of each day.
   // Query Params: 
-  //    download=true: download local copy
-  //    dates=: a date or range of dates for the data to fall between (inclusive)
+  //    download=true : download local copy
+  //    dates=        : a date or range of dates for the data to fall between (inclusive)
+  //    day=true      : download the day by day schedule
   // in form [{1} DD/MM/YYYY{1} [, DD/MM/YYYY]? ]{1} (<--regex)
   app.get("/get_processed_schedule", async (req, res) => {
     let returnData = [];
