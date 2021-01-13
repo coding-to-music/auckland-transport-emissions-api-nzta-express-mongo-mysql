@@ -679,19 +679,37 @@ client.connect(async (err, db) => {
   app.get("/get_processed_schedule", async (req, res) => {
     let returnData = [];
     let dates = req.query.dates != undefined ? formDateArrayFromQuery(req.query.dates) : formDateArray();
-    for (let date of dates) {
-      console.log("Querying collection...");
-      let data = await dbo.collection(config.FINAL_SCHEDULE_COL).find({ "UUID": {"$regex" : new RegExp("^" + date) } }).toArray();
+    //If day arg, download by day
+    if (req.query.day === 'true') {
+      for (let date of dates) {
+        console.log("Querying collection for data on " + date + "...");
+        let data = await dbo.collection(config.FINAL_SCHEDULE_COL).find({ "UUID": {"$regex" : new RegExp("^" + date) } }).toArray();
+        returnData.push(data);
+        if (req.query.download === 'true') {
+          try {
+            console.log("Attempting to overwrite existing file");
+            fs.writeFileSync("./dataBackups/processed_schedule_" + date, JSON.stringify(data))
+          } catch (err) {
+            console.log("File does not exist ¯\\_(ツ)_/¯, creating...");
+            fs.appendFileSync("./dataBackups/processed_schedule_" + date, JSON.stringify(data));
+          }
+          console.log(date + " has been downloaded and written to dataBackups!");
+        }
+      }
+    } else {
+      //If no download by day arg, download entire set
+      console.log("Querying collection for data...");
+      let data = await dbo.collection(config.FINAL_SCHEDULE_COL).find({}).toArray();
       returnData.push(data);
       if (req.query.download === 'true') {
         try {
           console.log("Attempting to overwrite existing file");
-          fs.writeFileSync("./dataBackups/processed_schedule_" + date, JSON.stringify(data))
+          fs.writeFileSync("./dataBackups/processed_schedule_" + dates[0] + "-" + dates[dates.length - 1], JSON.stringify(data))
         } catch (err) {
           console.log("File does not exist ¯\\_(ツ)_/¯, creating...");
-          fs.appendFileSync("./dataBackups/processed_schedule_" + date, JSON.stringify(data));
+          fs.appendFileSync("./dataBackups/processed_schedule_" + dates[0] + "-" + dates[dates.length - 1], JSON.stringify(data));
         }
-        console.log(date + " has been downloaded and written to dataBackups!");
+        console.log("The full collection has been downloaded and written to dataBackups!");
       }
     }
     res.send(returnData);
