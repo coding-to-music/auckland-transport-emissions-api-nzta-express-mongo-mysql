@@ -36,6 +36,12 @@ function init() {
   element2[0].appendChild(generateScheduleButton);
   element2[0].appendChild(downloadRawDataButton);
 
+  // Compare stop sequence to see distances
+  let compareStopSequence = document.createElement("BUTTON");
+  compareStopSequence.innerHTML = "Compare Stop Seqeunces";
+  compareStopSequence.onclick = compareStopSequences;
+  element2[0].appendChild(compareStopSequence);
+
   createDatePickers();
 }
 
@@ -84,6 +90,13 @@ async function compareFinalToRaw() {
 async function compareUUIDs() {
   html.log("Starting comparing UUIDs, progress can be monitored from the console (Ctrl + Shft + I)");
   await getFrom(URL + "/compare_UUIDs");
+}
+
+async function compareStopSequences() {
+  html.log("Starting the stop sequence comparison pipeline");
+  let compareStop = await getFrom(URL + "/compare_stops");
+  html.log("Journeys from realtime without matching stop sequence:")
+  html.log(compareStop)
 }
 
 function createDatePickers() {

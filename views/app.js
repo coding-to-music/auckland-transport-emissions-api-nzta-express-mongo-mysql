@@ -716,6 +716,31 @@ client.connect(async (err, db) => {
     res.send(returnData);
   })
 
+  // Get all the stop sequences (number_stops) from the schedule and compare to the realtime observed data
+  // Takes a long time to resolve
+  app.get("/compare_stops", async (req, res) => {
+    let stopsFromSchedule = await dbo.collection("final_trip_UUID_set").find({}).toArray();
+    let stopsByTripID = {};
+    for (let trip of stopsFromSchedule) {
+      stopsByTripID[trip.trip_id] = trip.number_stops;
+    }
+    console.log(stopsByTripID);
+    let notMatching = [];
+    let arrived = true;
+    let stopsFromRaw = await dbo.collection("raw_w_routes").find({}, {}).toArray();
+    console.log(stopsFromRaw);
+    for (let journey of stopsFromRaw) {
+      if (journey.stop_sequence != stopsByTripID[journey.trip_id]) {
+        notMatching.push(journey);
+        if (journey.arrived) {
+          arrived = false;
+        }
+      }
+    }
+    console.log(notMatching, arrived);
+    res.send(notMatching);
+  })
+
   app.post('/postThat', (req, res) => {
     //code to perform particular action.
     //To access POST variable use req.body() methods.
