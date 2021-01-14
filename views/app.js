@@ -716,6 +716,90 @@ client.connect(async (err, db) => {
     res.send(returnData);
   })
 
+  // Get all the stop sequences (number_stops) from the schedule and compare to the realtime observed data
+  // Takes a long time to resolve
+  // We need to take both of the entries from both of the datasets, take this value and 
+  // enter into raw_w_routes
+  app.get("/compare_stops", async (req, res) => {
+    let stopsFromSchedule = await dbo.collection("final_trip_UUID_set").find({}).toArray();
+    let stopsByTripID = {};
+<<<<<<< Updated upstream
+=======
+    // Collect the info for each raw info
+>>>>>>> Stashed changes
+    for (let trip of stopsFromSchedule) {
+      stopsByTripID[trip.trip_id] = 
+        { 
+          "stops" : trip.number_stops,
+          "distance" : trip.distance,
+          "shape" : trip.shape_id
+        }
+    }
+<<<<<<< Updated upstream
+    console.log(stopsByTripID);
+    let notMatching = [];
+    let arrived = true;
+    let stopsFromRaw = await dbo.collection("raw_w_routes").find({}, {}).toArray();
+    console.log(stopsFromRaw);
+    for (let journey of stopsFromRaw) {
+      // LOAD SHAPE FILE FROM SHAPE ID
+=======
+    let notMatching = [];
+    let arrived = true;
+    let stopsFromRaw = await dbo.collection("raw_w_routes").find({"date" : {"$ne" : "20201222"}}, {}).toArray();
+    console.log(stopsFromRaw);
+    for (let journey of stopsFromRaw) {
+      // Check if the stop sequence matches ie we recorded all the stops of the bus
+>>>>>>> Stashed changes
+      if (journey.stop_sequence != stopsByTripID[journey.trip_id].stops) {
+        notMatching.push(journey);
+        if (journey.arrived) {
+          arrived = false;
+        }
+      }
+    }
+    console.log(notMatching, arrived);
+<<<<<<< Updated upstream
+    let inverse = stopsFromRaw.filter(d => !notMatching.includes(d)).map(d => {return d.UUID});
+    let rawCorrectStops = await dbo.collection("raw_w_routes").find({UUID : {"$in" : inverse}}).toArray();
+    for (let journey of rawCorrectStops) {
+      journey.distance = calcShapeDist(stopsByTripID[journey.trip_id].shape_id);
+    }
+    for (let journey of notMatching) {
+      //*********************TODO FIX THIS LINE!!!!*********************
+      // LOAD SHAPE FILE FROM SHAPE ID
+      journey.distance = stopsByTripID[journey.trip_id].distance;
+    }
+    res.send(notMatching);
+  })
+
+=======
+    // let inverse = stopsFromRaw.filter(d => !notMatching.includes(d)).map(d => {return d.UUID});
+    // let rawCorrectStops = await dbo.collection("raw_w_routes").find({UUID : {"$in" : inverse}}).toArray();
+    // for (let journey of rawCorrectStops) {
+    //   journey.distance = calcShapeDist(stopsByTripID[journey.trip_id].shape_id);
+    // }
+    // for (let journey of notMatching) {
+    //   //*********************TODO FIX THIS LINE!!!!*********************
+    //   // LOAD SHAPE FILE FROM SHAPE ID
+    //   journey.distance = stopsByTripID[journey.trip_id].distance;
+    // }
+    await dbo.collection("journey_needing_distances").insertMany(notMatching, {});
+    res.send(notMatching);
+  })
+
+  app.get('/get_shapes', (req, res) => {
+    let missingDistances = await dbo.collection("journey_needing_distances").find({}, {}).toArray();
+    let shape_ids = new Set();
+    for (let journey of missingDistances) {
+      shape_ids.add(journey.shape_ids);
+    }
+    let pre = [shape_ids[0], shape_ids[1], shape_ids[2], shape_ids[3]]
+    let a = await getMultipleATAPI("https://api.at.govt.nz/v2/gtfs/shapes/shapeId/", pre);
+    
+  })
+
+>>>>>>> Stashed changes
   app.post('/postThat', (req, res) => {
     //code to perform particular action.
     //To access POST variable use req.body() methods.
