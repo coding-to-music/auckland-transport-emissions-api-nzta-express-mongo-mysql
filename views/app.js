@@ -34,7 +34,9 @@ const SQLPool = new SQLManagement();
 const MongoClient = require('../node_modules/mongodb').MongoClient;
 const { Console } = require('console');
 const { FINAL_SCHEDULE_COL } = require('../config.js');
-const client = new MongoClient(config.mongodb.uri, { useUnifiedTopology: true });
+const { start } = require('repl');
+const { resolve } = require('../node_modules/path');
+const client = new MongoClient(config.testing.uri, { useUnifiedTopology: true });
 
 app.use(express.static(path.join('public')));
 app.use(express.static(path.join('views')));
@@ -57,7 +59,7 @@ app.get('/mongoInterface', async (req, res) => {
 
 client.connect(async (err, db) => {
   //Set db object
-  let dbo = db.db("ate_model");
+  let dbo = db.db(config.testing.db);
   let collection = dbo.collection("realtime_raw");
   /*** Helpers ***/
   /**
@@ -455,9 +457,10 @@ client.connect(async (err, db) => {
   // Send the generated info back to the requester
   app.get("/generate_schedule", async (req, res) => {
     // ************************ FORM RAW DATA ************************
-    let dateToCheck = formDateArray();
+    let dateToCheck = formDateArray(new Date(2020, 11, 23), new Date(2021, 0, 12));
     let trips = dbo.collection("realtime_raw");
 
+    console.log(dateToCheck);
     let lookup = [
       {
         "$match": {
@@ -487,11 +490,9 @@ client.connect(async (err, db) => {
     };
 
     console.log("Generating raw_w_routes for filtering...");
-    await trips.aggregate(lookup, options).toArray(async (err, docs) => {
-      if (err) throw err;
-      await dbo.collection("raw_w_routes").createIndex({ "date": 1 }).then(() => { console.log("Indexes created") });
-      console.log("Collection raw_w_routes has been created!");
-    })
+    await trips.aggregate(lookup, options).toArray();
+    await dbo.collection("raw_w_routes").createIndex({ "date": 1 }).then(() => { console.log("Indexes created") });
+    console.log("Collection raw_w_routes has been created!");
 
     // ************************ ADD DATA TO SCHEDULE ************************
     console.log("Starting schedule dataset generation pipeline")
@@ -534,15 +535,11 @@ client.connect(async (err, db) => {
       }
     ]
 
-    await dbo.collection("trips").aggregate(pipe, options).toArray(async (err, docs) => {
-      if (err) throw err;
-      console.log("Added filtered route information to schedule_trips, written to filtered_trips");
-    })
+    await dbo.collection("trips").aggregate(pipe, options).toArray();
+    console.log("Added filtered route information to schedule_trips, written to filtered_trips");
 
-    await dbo.collection("filtered_trips").aggregate(pipe2, options).toArray(async (err, docs) => {
-      if (err) throw err;
-      console.log("Added filtered calendar information to filtered_trips, written to filtered_trips");
-    })
+    await dbo.collection("filtered_trips").aggregate(pipe2, options).toArray();
+    console.log("Added filtered calendar information to filtered_trips, written to filtered_trips");
 
     // ************************ GET EXCEPTIONS ************************
     let excss = await dbo.collection("calendarDate").aggregate([
@@ -568,16 +565,19 @@ client.connect(async (err, db) => {
     for (let e of excss) {
       service_ids.push(e._id);
     }
+    console.log(service_ids);
     // ************************ FORM NEW UUIDS WITH EXCPETIONS ************************
     //New docs with UUIDs to add
+    // TODO: MAKE THIS QUERY MORE MODULAR
     let modDocs = [];
-    await dbo.collection("filtered_trips").find({
-      "service_days.start_date": { "$gte": "2020-12-22T00:00:00.000Z" },
-      "service_days.end_date": { "$lte": "2021-01-23T00:00:00.000Z" },
-    }, {}).toArray(async (err, docs) => {
-      if (err) throw err;
+    let docsNeedingUUIDS = await dbo.collection("filtered_trips").find({
+        "service_days.start_date": { "$gte": "2020-12-22T00:00:00.000Z" },
+        "service_days.end_date": { "$lte": "2021-01-23T00:00:00.000Z" },
+      }, {}).toArray();
+      let modifiedDocs = [];
+      console.log(docsNeedingUUIDS);
       //Check every journey entry
-      for (let entry of docs) {
+      for (let entry of docsNeedingUUIDS) {
         //Filter exceptions to match current journey service id
         let exceptions = [];
         for (e of excss) {
@@ -585,7 +585,7 @@ client.connect(async (err, db) => {
             exceptions.push(e);
           }
         }
-
+  
         entry.UUID = new Set();
         //First add the normal calendar and exceptions from calendarDates
         entry = formUUIDsFromCalendar(entry, exceptions);
@@ -593,18 +593,15 @@ client.connect(async (err, db) => {
         entry = formUUIDsFromCalendarDates(entry, exceptions);
         //Final convert the set to an array
         entry.UUID = Array.from(entry.UUID);
-        modDocs.push(entry);
+        modifiedDocs.push(entry);
       }
-    })
+    console.log(modifiedDocs);
     // ************************ POST DATA TO MONGO ************************
-    await dbo.collection(config.FINAL_SCHEDULE_COL).updateMany(modDocs, async (err, results) => {
-      if (err) throw err;
-      console.log(results);
-      //Create indexes for  this collection
-      await dbo.collection(config.FINAL_SCHEDULE_COL).createIndex({ "trip_id": 1 }, { unique: true });
-      await dbo.collection(config.FINAL_SCHEDULE_COL).createIndex({ "service_days.start_date": 1 });
-      console.log("Posting schedule set complete, cleaning data...");
-    });
+    await dbo.collection(config.FINAL_SCHEDULE_COL).insertMany(modifiedDocs);
+    //Create indexes for  this collection
+    await dbo.collection(config.FINAL_SCHEDULE_COL).createIndex({ "trip_id": 1 }, { unique: true });
+    await dbo.collection(config.FINAL_SCHEDULE_COL).createIndex({ "service_days.start_date": 1 });
+    console.log("Posting schedule set complete, cleaning data...");
 
     // ************************ CLEAN DATA IN MONGO ************************
     // NOTE: this could be done at lookup stage if memory 
@@ -640,6 +637,47 @@ client.connect(async (err, db) => {
     res.send("Pipeline has been successful, yay!! You may now use the comparison functions, or open this data elsewhere");
   })
 
+  // Called to fix calendarDates, calendar, versions, and existing schedule when there is 
+  // an unexpected change to the AT API
+  app.get("/repair_database", async (req, res) => {
+    //Sudo versions changed
+    //Perhaps keep versions local and query the db for them, compare and discover changes this way?
+    let versionsChanged = true;
+    //We need to get the new version date when parsed a new version
+    let versionsDate_start = "";
+    let versionDate_end = "2021-01-13T00:00:00.000Z";
+
+    //If version has changed we want to update collections accordingly
+    if (versionsChanged) {
+      await dbo.collection("calendarDates")
+        .deleteMany({
+          "date" : {"$gte" : versionDate_end}
+        })
+
+      // The calendar needs to have the version to update the end_date field for services
+      await dbo.collection("calendar")
+        .updateMany({
+          "start_date" : versionDate_start
+        },
+        {
+          "end_date" : versionDate_end
+        }, {});
+      let startDateObj = createDateFromStringTimestamp(versionsDate_start); 
+      await dbo.collection("versions")
+        .updateMany({
+          "end_date" : {"$and" : [
+              {"$gt" : versionsDate_start},
+              {"$lt" : versionsDate_end}
+            ]
+          }
+        }, 
+        {
+          "start_date" : startDateObj.getFullYear() + "-" + (startDateObj.getMonth() + 1) + "-" + (startDateObj.getDate() - 1) + "T00:00:00.000Z" // THIS IS NOT GOING TO WORK
+        },
+        {});
+    }
+  })
+
   // Get the raw realtime data provided by the AT API
   // Creates a local copy of each day.
   // Query Params: 
@@ -648,7 +686,7 @@ client.connect(async (err, db) => {
   // in form [{1} DD/MM/YYYY{1} [, DD/MM/YYYY]? ]{1} (<--regex)
   app.get("/get_raw_data", async (req, res) => {
     let returnData = [];
-    let dates = req.query.dates != undefined ? formDateArrayFromQuery(req.query.dates) : formDateArray();
+    let dates = req.query.dates != undefined ? formDateArrayFromQuery(req.query.dates) : formDateArray(new Date(23,11,2020), new Date(12,0,2021));
     for (let date of dates) {
       let data = await dbo.collection("realtime_raw").find({ "date": date }).toArray();
       returnData.push(data);
@@ -1024,11 +1062,15 @@ function fixDate(date) {
 }
 
 /**
- * Generate an array of dates between the start of our data and today
+ * Generate an array of dates between the start date and end
+ * 
+ * @param {Date} startDate
+ * @param {Date} endDate
  */
-function formDateArray() {
+function formDateArray(startDate, endDate) {
   let dates = [];
-  for (let d = new Date(2020, 11, 22); d < new Date(); d.setDate(d.getDate() + 1)) {
+  console.log(startDate, endDate);
+  for (let d = new Date(startDate); d < endDate; d.setDate(d.getDate() + 1)) {
     dates.push(fixDate(d));
   }
   return dates;
@@ -1064,6 +1106,12 @@ function formDateArrayFromQuery(queryDates) {
   }
 
   return dates;
+}
+
+function createDateFromStringTimestamp(stringStamp) {
+  let dateSection = stringStamp.split("T")[0].split("-");
+  let month = parseInt(dateSelection[1]) - 1;
+  return new Date(dateSelection[2], month, dateSelection[0]);
 }
 
 
