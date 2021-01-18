@@ -233,7 +233,7 @@ client.connect(async (err, db) => {
 
     let raw = await dbo.collection("raw_w_routes")
       .find({
-        "date": { "$gte": "20201223", "$lte": "20201229" },
+        "date": { "$gte": "20201223", "$lte": "20210112" },
       }, {}).toArray();
     let UUIDsRaw = raw.map(d => {
       return d.UUID;
@@ -248,7 +248,7 @@ client.connect(async (err, db) => {
     let scheduleByRawUUIDs = new Set();
     for (let trip of scheduleByRaw) {
       for (let journey of trip.UUID) {
-        if (journey.match(/2020122[3-9]/)) {
+        if (journey.match(/2020122[3-9]/) || journey.match(/2021010[1-9]/) || journey.match(/2021011[0-2]/)) {
           scheduleByRawUUIDs.add(journey);
         }
       }
@@ -258,11 +258,11 @@ client.connect(async (err, db) => {
     console.log("UUIDs in schedule:", scheduleByRawUUIDs.length);
 
     let schedule = await dbo.collection(config.FINAL_SCHEDULE_COL).find({}, {}).toArray();
-    let UUIDsSchedule = [];
+    let UUIDsSchedule = new Set();
     for (let trip of schedule) {
       for (let journey of trip.UUID) {
-        if (journey.match(/2020122[3-9]/)) {
-          UUIDsSchedule.push(journey);
+        if (journey.match(/2020122[3-9]/) || journey.match(/2021010[1-9]/) || journey.match(/2021011[0-2]/)) {
+          UUIDsSchedule.add(journey);
         }
       }
     }
@@ -270,13 +270,23 @@ client.connect(async (err, db) => {
       .aggregate([
         {
           "$match": {
-            "UUID": { "$in": UUIDsSchedule },
-            "date": { "$gte": "20201223", "$lte": "20201229" },
+            "UUID": { "$in": Array.from(UUIDsSchedule) },
+            "date": { "$gte": "20201223", "$lte": "20210112" },
           }
         },
       ], {}).toArray();
-    console.log("UUIDS in Schedule", UUIDsSchedule.length);
+    console.log("UUIDS in Schedule", Array.from(UUIDsSchedule).length);
+    console.log("Trips in Schedule", schedule.length);
     console.log("UUIDs in Raw", rawBySchedule.length);
+
+    console.log(UUIDsSchedule);
+    console.log(UUIDsRaw);
+      let answer = Array.from(UUIDsSchedule).filter(d => {
+        console.log(d);
+        return !UUIDsRaw.includes(d);
+      })
+      console.log(answer);
+    // console.log(rawBySchedule);
   })
 
   // Get a day by day comparison of the trips in the schedule as the base table, and
@@ -545,7 +555,7 @@ client.connect(async (err, db) => {
     let excss = await dbo.collection("calendarDate").aggregate([
       {
         "$match": {
-          "date": { "$gte": "2020-12-22T00:00:00.000Z", "$lte": "2021-01-23T00:00:00.000Z" },
+          "date": { "$gte": "2020-12-22T00:00:00.000Z", "$lte": "2021-01-12T00:00:00.000Z" },
         }
       },
       {
@@ -569,7 +579,6 @@ client.connect(async (err, db) => {
     // ************************ FORM NEW UUIDS WITH EXCPETIONS ************************
     //New docs with UUIDs to add
     // TODO: MAKE THIS QUERY MORE MODULAR
-    let modDocs = [];
     let docsNeedingUUIDS = await dbo.collection("filtered_trips").find({
         "service_days.start_date": { "$gte": "2020-12-22T00:00:00.000Z" },
         "service_days.end_date": { "$lte": "2021-01-23T00:00:00.000Z" },
@@ -643,39 +652,52 @@ client.connect(async (err, db) => {
     //Sudo versions changed
     //Perhaps keep versions local and query the db for them, compare and discover changes this way?
     let versionsChanged = true;
+    //
+    let originalVersionDate_start = "2020-12-22T00:00:00.000Z";
+    let originalVersionDate_end = "2021-01-23T00:00:00.000Z";
+    let newVersionDate_start = "2021-01-13T00:00:00.000Z";
+    let newVersionDate_end = "2021-01-23T00:00:00.000Z";
     //We need to get the new version date when parsed a new version
-    let versionsDate_start = "";
-    let versionDate_end = "2021-01-13T00:00:00.000Z";
+    let versionDate_start = "2020-12-22T00:00:00.000Z";
+    let versionDate_end = "2021-01-13T00:00:00.000Z"; //The start of the next version
 
     //If version has changed we want to update collections accordingly
     if (versionsChanged) {
+      // Remove exceptions that are no longer valid
       await dbo.collection("calendarDates")
         .deleteMany({
-          "date" : {"$gte" : versionDate_end}
+          "date" : {"$gte" : newVersionDate_end}
         })
+      console.log("Invalid exceptions removed from calendar dates.");
 
       // The calendar needs to have the version to update the end_date field for services
       await dbo.collection("calendar")
         .updateMany({
-          "start_date" : versionDate_start
+          "start_date" : originalVersionDate_start
         },
         {
-          "end_date" : versionDate_end
+          "$set" : {"end_date" : newVersionDate_end}
         }, {});
-      let startDateObj = createDateFromStringTimestamp(versionsDate_start); 
+        console.log("Updated calendar to have correct end date.");
+      // Update the versions we have to correct date
+      let startDateObj = createDateFromStringTimestamp(newVersionDate_start);
+      let startMonth = startDateObj.getMonth() + 1;
+      console.log(startMonth)
+      startMonth = parseInt(startMonth) < 10 ? "0" + startMonth : startMonth; 
+      console.log(startMonth)
       await dbo.collection("versions")
         .updateMany({
-          "end_date" : {"$and" : [
-              {"$gt" : versionsDate_start},
-              {"$lt" : versionsDate_end}
+          "$and" : [
+            {"enddate" : {"$gt" : newVersionDate_start}},
+            {"startdate" : {"$lt" : newVersionDate_start}}
             ]
-          }
-        }, 
+          },
         {
-          "start_date" : startDateObj.getFullYear() + "-" + (startDateObj.getMonth() + 1) + "-" + (startDateObj.getDate() - 1) + "T00:00:00.000Z" // THIS IS NOT GOING TO WORK
+          "$set" : {"enddate" : startDateObj.getFullYear() + "-" + startMonth + "-" + (startDateObj.getDate() - 1) + "T00:00:00.000Z" } // THIS IS NOT GOING TO WORK
         },
         {});
     }
+    console.log("DB is now using updated versions!");
   })
 
   // Get the raw realtime data provided by the AT API
@@ -693,10 +715,10 @@ client.connect(async (err, db) => {
       if (req.query.download === 'true') {
         try {
           console.log("Attempting to overwrite existing file");
-          fs.writeFileSync("./dataBackups/realtime_raw_" + date, JSON.stringify(data))
+          fs.writeFileSync("./dataBackups/realtime_raw_" + date + ".json", JSON.stringify(data));
         } catch (err) {
           console.log("File does not exist ¯\\_(ツ)_/¯, creating...");
-          fs.appendFileSync("./dataBackups/realtime_raw_" + date, JSON.stringify(data));
+          fs.appendFileSync("./dataBackups/realtime_raw_" + date + ".json", JSON.stringify(data));
         }
         console.log(date + " has been downloaded and written to dataBackups!");
       }
@@ -761,10 +783,7 @@ client.connect(async (err, db) => {
   app.get("/compare_stops", async (req, res) => {
     let stopsFromSchedule = await dbo.collection("final_trip_UUID_set").find({}).toArray();
     let stopsByTripID = {};
-<<<<<<< Updated upstream
-=======
     // Collect the info for each raw info
->>>>>>> Stashed changes
     for (let trip of stopsFromSchedule) {
       stopsByTripID[trip.trip_id] = 
         { 
@@ -773,22 +792,12 @@ client.connect(async (err, db) => {
           "shape" : trip.shape_id
         }
     }
-<<<<<<< Updated upstream
-    console.log(stopsByTripID);
-    let notMatching = [];
-    let arrived = true;
-    let stopsFromRaw = await dbo.collection("raw_w_routes").find({}, {}).toArray();
-    console.log(stopsFromRaw);
-    for (let journey of stopsFromRaw) {
-      // LOAD SHAPE FILE FROM SHAPE ID
-=======
     let notMatching = [];
     let arrived = true;
     let stopsFromRaw = await dbo.collection("raw_w_routes").find({"date" : {"$ne" : "20201222"}}, {}).toArray();
     console.log(stopsFromRaw);
     for (let journey of stopsFromRaw) {
       // Check if the stop sequence matches ie we recorded all the stops of the bus
->>>>>>> Stashed changes
       if (journey.stop_sequence != stopsByTripID[journey.trip_id].stops) {
         notMatching.push(journey);
         if (journey.arrived) {
@@ -797,21 +806,6 @@ client.connect(async (err, db) => {
       }
     }
     console.log(notMatching, arrived);
-<<<<<<< Updated upstream
-    let inverse = stopsFromRaw.filter(d => !notMatching.includes(d)).map(d => {return d.UUID});
-    let rawCorrectStops = await dbo.collection("raw_w_routes").find({UUID : {"$in" : inverse}}).toArray();
-    for (let journey of rawCorrectStops) {
-      journey.distance = calcShapeDist(stopsByTripID[journey.trip_id].shape_id);
-    }
-    for (let journey of notMatching) {
-      //*********************TODO FIX THIS LINE!!!!*********************
-      // LOAD SHAPE FILE FROM SHAPE ID
-      journey.distance = stopsByTripID[journey.trip_id].distance;
-    }
-    res.send(notMatching);
-  })
-
-=======
     // let inverse = stopsFromRaw.filter(d => !notMatching.includes(d)).map(d => {return d.UUID});
     // let rawCorrectStops = await dbo.collection("raw_w_routes").find({UUID : {"$in" : inverse}}).toArray();
     // for (let journey of rawCorrectStops) {
@@ -826,7 +820,7 @@ client.connect(async (err, db) => {
     res.send(notMatching);
   })
 
-  app.get('/get_shapes', (req, res) => {
+  app.get('/get_shapes', async (req, res) => {
     let missingDistances = await dbo.collection("journey_needing_distances").find({}, {}).toArray();
     let shape_ids = new Set();
     for (let journey of missingDistances) {
@@ -837,7 +831,6 @@ client.connect(async (err, db) => {
     
   })
 
->>>>>>> Stashed changes
   app.post('/postThat', (req, res) => {
     //code to perform particular action.
     //To access POST variable use req.body() methods.
@@ -988,9 +981,11 @@ function formUUIDsFromCalendarDates(entry, exceptions) {
   for (let exception of exceptions) {
     for (let e of exception.exceptionDates) {
       if (e.exception_type === 1) {
+        if (e.date >= "2020-12-22T00:00:00.000Z" && e.date <= "2021-01-13T00:00:00.000Z") {
         let toCheck = e.date.split("T");
         toCheck = toCheck[0].split("-");
-        entry.UUID.add(toCheck[0] + toCheck[1] + toCheck[2] + "-" + entry.trip_id);
+          entry.UUID.add(toCheck[0] + toCheck[1] + toCheck[2] + "-" + entry.trip_id);
+        }
       }
     }
   }
@@ -1027,7 +1022,7 @@ function formUUIDsFromCalendar(entry, exceptions) {
       //if true, service is meant to run unless exception is entered
       if (service_days[d] === 1) {
         //Increment the date by a week at a time to make the UUIDs for this range of trips
-        for (let dt = new Date(2020, 11, (22 + offsets[d])); dt < new Date(2021, 0, 21); dt.setDate(dt.getDate() + 7)) {
+        for (let dt = new Date(2020, 11, (22 + offsets[d])); dt < new Date(2021, 0, 12); dt.setDate(dt.getDate() + 7)) {
           //break on exception equal to this date, dt
           let excepted = false;
           for (let exception of exceptions) {
@@ -1109,9 +1104,9 @@ function formDateArrayFromQuery(queryDates) {
 }
 
 function createDateFromStringTimestamp(stringStamp) {
-  let dateSection = stringStamp.split("T")[0].split("-");
+  let dateSelection = stringStamp.split("T")[0].split("-");
   let month = parseInt(dateSelection[1]) - 1;
-  return new Date(dateSelection[2], month, dateSelection[0]);
+  return new Date(dateSelection[0], month, dateSelection[2]);
 }
 
 
