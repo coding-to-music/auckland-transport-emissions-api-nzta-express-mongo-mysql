@@ -36,7 +36,7 @@ const { Console } = require('console');
 const { FINAL_SCHEDULE_COL } = require('../config.js');
 const { start } = require('repl');
 const { resolve } = require('../node_modules/path');
-const client = new MongoClient(config.testing.uri, { useUnifiedTopology: true });
+const client = new MongoClient(config.mongodb.uri, { useUnifiedTopology: true });
 
 app.use(express.static(path.join('public')));
 app.use(express.static(path.join('views')));
@@ -59,7 +59,7 @@ app.get('/mongoInterface', async (req, res) => {
 
 client.connect(async (err, db) => {
   //Set db object
-  let dbo = db.db(config.testing.db);
+  let dbo = db.db("ate_model");
   let collection = dbo.collection("realtime_raw");
   /*** Helpers ***/
   /**
@@ -228,12 +228,28 @@ client.connect(async (err, db) => {
   // Get all the UUIDs for a day then send these to the schedule for comparison,
   // do the same for the schedule. This tells us roughly how many
   // trips are missing from the realtime and the schedule
+  // Query Params:
+  //    dates=: a date or range of dates for the data to fall between (inclusive)
+  // in form [{1} DD/MM/YYYY{1} [, DD/MM/YYYY]? ]{1} (<--regex)
   app.get("/compare_UUIDs", async (req, res) => {
     console.log("Starting raw to final comparison pipeline");
+    let startDate = new Date(2020, 11, 23);
+    let endDate = new Date(2020, 11, 28);
+    if (req.query.dates != undefined) {
+      let dates = getDatesFromQueryArray(req.query.dates);
+      startDate = dates.start;
+      endDate = dates.end;
+    }
+    let startDateString = fixDate(startDate);
+    let endDateString = fixDate(endDate);
+
+    console.log(startDateString, endDateString);
 
     let raw = await dbo.collection("raw_w_routes")
       .find({
-        "date": { "$gte": "20201223", "$lte": "20210112" },
+        "$and" : [
+          {"date" : { "$gte": startDateString, "$lte": endDateString }},
+        ]
       }, {}).toArray();
     let UUIDsRaw = raw.map(d => {
       return d.UUID;
@@ -245,11 +261,20 @@ client.connect(async (err, db) => {
         }
       }
       ], {}).toArray();
+    let regexes = [];
+    console.log(formDateArray(startDate, endDate));
+    for (let date of formDateArray(startDate, endDate)) {
+      regexes.push(new RegExp(date));
+    }
+    console.log(regexes);
     let scheduleByRawUUIDs = new Set();
     for (let trip of scheduleByRaw) {
       for (let journey of trip.UUID) {
-        if (journey.match(/2020122[3-9]/) || journey.match(/2021010[1-9]/) || journey.match(/2021011[0-2]/)) {
-          scheduleByRawUUIDs.add(journey);
+        for (let regex of regexes) {
+          if (journey.match(regex)) {
+            // if (journey.match(/2020122[3-9]/) || journey.match(/2021010[1-9]/) || journey.match(/2021011[0-2]/)) {
+              scheduleByRawUUIDs.add(journey);
+            }
         }
       }
     }
@@ -261,8 +286,10 @@ client.connect(async (err, db) => {
     let UUIDsSchedule = new Set();
     for (let trip of schedule) {
       for (let journey of trip.UUID) {
-        if (journey.match(/2020122[3-9]/) || journey.match(/2021010[1-9]/) || journey.match(/2021011[0-2]/)) {
-          UUIDsSchedule.add(journey);
+        for (let regex of regexes) {
+          if (journey.match(regex)) {
+            UUIDsSchedule.add(journey);
+          }
         }
       }
     }
@@ -271,22 +298,13 @@ client.connect(async (err, db) => {
         {
           "$match": {
             "UUID": { "$in": Array.from(UUIDsSchedule) },
-            "date": { "$gte": "20201223", "$lte": "20210112" },
+            "date": { "$gte": startDateString, "$lte": endDateString },
           }
         },
       ], {}).toArray();
     console.log("UUIDS in Schedule", Array.from(UUIDsSchedule).length);
     console.log("Trips in Schedule", schedule.length);
     console.log("UUIDs in Raw", rawBySchedule.length);
-
-    console.log(UUIDsSchedule);
-    console.log(UUIDsRaw);
-      let answer = Array.from(UUIDsSchedule).filter(d => {
-        console.log(d);
-        return !UUIDsRaw.includes(d);
-      })
-      console.log(answer);
-    // console.log(rawBySchedule);
   })
 
   // Get a day by day comparison of the trips in the schedule as the base table, and
@@ -467,7 +485,8 @@ client.connect(async (err, db) => {
   // Send the generated info back to the requester
   app.get("/generate_schedule", async (req, res) => {
     // ************************ FORM RAW DATA ************************
-    let dateToCheck = formDateArray(new Date(2020, 11, 23), new Date(2021, 0, 12));
+    // Fix this date
+    let dateToCheck = formDateArray(new Date(2021, 0, 13), new Date(2021, 0, 18));
     let trips = dbo.collection("realtime_raw");
 
     console.log(dateToCheck);
@@ -499,10 +518,10 @@ client.connect(async (err, db) => {
       allowDiskUse: 1
     };
 
-    console.log("Generating raw_w_routes for filtering...");
-    await trips.aggregate(lookup, options).toArray();
-    await dbo.collection("raw_w_routes").createIndex({ "date": 1 }).then(() => { console.log("Indexes created") });
-    console.log("Collection raw_w_routes has been created!");
+    // console.log("Generating raw_w_routes for filtering...");
+    // await trips.aggregate(lookup, options).toArray();
+    // await dbo.collection("raw_w_routes").createIndex({ "date": 1 }).then(() => { console.log("Indexes created") });
+    // console.log("Collection raw_w_routes has been created!");
 
     // ************************ ADD DATA TO SCHEDULE ************************
     console.log("Starting schedule dataset generation pipeline")
@@ -555,7 +574,7 @@ client.connect(async (err, db) => {
     let excss = await dbo.collection("calendarDate").aggregate([
       {
         "$match": {
-          "date": { "$gte": "2020-12-22T00:00:00.000Z", "$lte": "2021-01-12T00:00:00.000Z" },
+          "date": { "$gte": "2021-01-13T00:00:00.000Z", "$lte": "2021-01-23T00:00:00.000Z" },
         }
       },
       {
@@ -580,7 +599,7 @@ client.connect(async (err, db) => {
     //New docs with UUIDs to add
     // TODO: MAKE THIS QUERY MORE MODULAR
     let docsNeedingUUIDS = await dbo.collection("filtered_trips").find({
-        "service_days.start_date": { "$gte": "2020-12-22T00:00:00.000Z" },
+        "service_days.start_date": { "$gte": "2021-01-13T00:00:00.000Z" },
         "service_days.end_date": { "$lte": "2021-01-23T00:00:00.000Z" },
       }, {}).toArray();
       let modifiedDocs = [];
@@ -981,9 +1000,9 @@ function formUUIDsFromCalendarDates(entry, exceptions) {
   for (let exception of exceptions) {
     for (let e of exception.exceptionDates) {
       if (e.exception_type === 1) {
-        if (e.date >= "2020-12-22T00:00:00.000Z" && e.date <= "2021-01-13T00:00:00.000Z") {
-        let toCheck = e.date.split("T");
-        toCheck = toCheck[0].split("-");
+        if (e.date >= "2021-01-13T00:00:00.000Z" && e.date <= "2021-01-23T00:00:00.000Z") {
+          let toCheck = e.date.split("T");
+          toCheck = toCheck[0].split("-");
           entry.UUID.add(toCheck[0] + toCheck[1] + toCheck[2] + "-" + entry.trip_id);
         }
       }
@@ -1005,13 +1024,13 @@ function formUUIDsFromCalendar(entry, exceptions) {
   //friday0 = 22/12 + 3 + 7*0 = 25/12
   //friday1 = 22/12 + 3 + 7*1 = 1/1
   let offsets = {
-    "tuesday": 0,
-    "wednesday": 1,
-    "thursday": 2,
-    "friday": 3,
-    "saturday": 4,
-    "sunday": 5,
-    "monday": 6,
+    "tuesday": 6,
+    "wednesday": 0,
+    "thursday": 1,
+    "friday": 2,
+    "saturday": 3,
+    "sunday": 4,
+    "monday": 5,
   }
 
   let service_days = entry.service_days[0];
@@ -1022,7 +1041,7 @@ function formUUIDsFromCalendar(entry, exceptions) {
       //if true, service is meant to run unless exception is entered
       if (service_days[d] === 1) {
         //Increment the date by a week at a time to make the UUIDs for this range of trips
-        for (let dt = new Date(2020, 11, (22 + offsets[d])); dt < new Date(2021, 0, 12); dt.setDate(dt.getDate() + 7)) {
+        for (let dt = new Date(2021, 0, (13 + offsets[d])); dt < new Date(2021, 0, 23); dt.setDate(dt.getDate() + 7)) {
           //break on exception equal to this date, dt
           let excepted = false;
           for (let exception of exceptions) {
@@ -1064,7 +1083,6 @@ function fixDate(date) {
  */
 function formDateArray(startDate, endDate) {
   let dates = [];
-  console.log(startDate, endDate);
   for (let d = new Date(startDate); d < endDate; d.setDate(d.getDate() + 1)) {
     dates.push(fixDate(d));
   }
@@ -1076,22 +1094,9 @@ function formDateArray(startDate, endDate) {
  */
 function formDateArrayFromQuery(queryDates) {
   let dates = [];
-  let startDate, endDate;
+  let dateObj = getDatesFromQueryArray(queryDates);
   try {
-    let q = queryDates.split("[")[1].split("]")[0];
-    console.log(q)
-    if (q.split(",")[0] === q) {
-      startDate = q;
-      endDate = new Date();
-    } else {
-      startDate = q.split(",");
-      endDate = startDate[1].trim();
-      startDate = startDate[0].trim();
-      endDate = endDate.split("/");
-      endDate = new Date(parseInt(endDate[2]), parseInt(endDate[1]) - 1, parseInt(endDate[0]));
-    }
-    startDate = startDate.split("/");
-    startDate = new Date(parseInt(startDate[2]), parseInt(startDate[1]) - 1, parseInt(startDate[0]));
+    let startDate = dateObj.start, endDate = dateObj.end;
     for (let d = startDate; d < endDate; d.setDate(d.getDate() + 1)) {
       dates.push(fixDate(d));
     }
@@ -1103,12 +1108,33 @@ function formDateArrayFromQuery(queryDates) {
   return dates;
 }
 
+/**
+ * From a string of an array of dates, create js date objects
+ * @param {String} queryDates 
+ */
+function getDatesFromQueryArray(queryDates) {
+  let startDate, endDate;
+  let q = queryDates.split("[")[1].split("]")[0];
+  if (q.split(",")[0] === q) {
+    startDate = q;
+    endDate = new Date();
+  } else {
+    startDate = q.split(",");
+    endDate = startDate[1].trim();
+    startDate = startDate[0].trim();
+    endDate = endDate.split("/");
+    endDate = new Date(parseInt(endDate[2]), parseInt(endDate[1]) - 1, parseInt(endDate[0]));
+  }
+  startDate = startDate.split("/");
+  startDate = new Date(parseInt(startDate[2]), parseInt(startDate[1]) - 1, parseInt(startDate[0]));
+  return {start: startDate, end: endDate};
+}
+
 function createDateFromStringTimestamp(stringStamp) {
   let dateSelection = stringStamp.split("T")[0].split("-");
   let month = parseInt(dateSelection[1]) - 1;
   return new Date(dateSelection[0], month, dateSelection[2]);
 }
-
 
 function formGetQuery(endpoint, args) {
   let string = config.host;
