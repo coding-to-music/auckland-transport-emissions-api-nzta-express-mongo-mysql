@@ -746,26 +746,44 @@ client.connect(async (err, db) => {
   app.get("/get_raw_data", async (req, res) => {
     let returnData = [];
     let dates = req.query.dates != undefined ? formDateArrayFromQuery(req.query.dates) : formDateArray(new Date(23,11,2020), new Date(12,0,2021));
-    for (let date of dates) {
-      let data = await dbo.collection("realtime_raw").find({ "date": date }).toArray();
+    console.log(dates);
+    //If day arg, download by day
+    if (req.query.day === 'true') {
+      for (let date of dates) {
+        let data = await dbo.collection("realtime_raw").find({ "date": date }).toArray();
+        returnData.push(data);
+        if (req.query.download === 'true') {
+          try {
+            console.log("Attempting to overwrite existing file");
+            fs.writeFileSync("./dataBackups/realtime_raw_" + date + ".json", JSON.stringify(data));
+          } catch (err) {
+            console.log("File does not exist ¯\\_(ツ)_/¯, creating...");
+            fs.appendFileSync("./dataBackups/realtime_raw_" + date + ".json", JSON.stringify(data));
+          }
+          console.log(date + " has been downloaded and written to dataBackups!");
+        }
+      }
+      res.send(returnData);
+    } else {
+      let data = await dbo.collection("realtime_raw").find({ "date" : { "$in" : dates }}).toArray();
       returnData.push(data);
       if (req.query.download === 'true') {
         try {
           console.log("Attempting to overwrite existing file");
-          fs.writeFileSync("./dataBackups/realtime_raw_" + date + ".json", JSON.stringify(data));
+          fs.writeFileSync("./dataBackups/realtime_raw_" + dates[0] + "-" + dates[dates.length - 1] + ".json", JSON.stringify(data));
         } catch (err) {
           console.log("File does not exist ¯\\_(ツ)_/¯, creating...");
-          fs.appendFileSync("./dataBackups/realtime_raw_" + date + ".json", JSON.stringify(data));
+          fs.appendFileSync("./dataBackups/realtime_raw_" + dates[0] + "-" + dates[dates.length - 1] + ".json", JSON.stringify(data));
         }
-        console.log(date + " has been downloaded and written to dataBackups!");
+        console.log(dates[0] + " has been downloaded and written to dataBackups!");
       }
+      res.send(returnData);
     }
-    res.send(returnData);
     // let a = res.write("bitches", 'utf-8');
     // let b = res.write("bitches", 'utf-8');
     // console.log(a);
     // res.end("5");
-  })
+  });
 
   // Get the processed schedule data provided by the AT API
   // Creates a local copy of each day.
