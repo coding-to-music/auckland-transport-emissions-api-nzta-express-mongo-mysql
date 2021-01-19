@@ -23,6 +23,6 @@ config.FINAL_SCHEDULE_COL = "final_trip_UUID_set";
 
 config.testing = {};
 config.testing.uri = 'mongodb://127.0.0.1:27017';
-config.testing.db = "test";
+config.testing.db = "ATE_test";
 
 module.exports = config;

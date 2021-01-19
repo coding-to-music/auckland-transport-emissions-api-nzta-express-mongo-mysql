@@ -24,9 +24,26 @@ fs.createReadStream('./public/data/Auckland Bus Operator Fleetlist 2020.xlsx - U
     }
   })
   .on('end', () => {
-    console.log('CSV file successfully processed');
+    console.log('Fleet list CSV file successfully processed');
   });
 
+let PAX_KM = {};
+let VALID_ROUTES = new Set(); 
+//Parse the pax_km spreadsheet
+fs.createReadStream('./public/data/Vehicle__Pax_Travel_Metrics.csv')
+  .pipe(csv())
+  .on('data', (row) => {
+    let displayRoute = row["Display Route Number"];
+    let vehicleID = row["Rapid vehicle number"];
+    if(Object.keys(FLEET_LIST).includes(vehicleID) || VALID_ROUTES.has(displayRoute)) {
+      let id = displayRoute + "_" + vehicleID;
+      PAX_KM[id] = row;
+      VALID_ROUTES.add(displayRoute);
+    }
+  })
+  .on('end', () => {
+    console.log('Pax km CSV file successfully processed');
+  });
 //DB IMPORTS
 const SQLManagement = require("../SQLManagment.js");
 const SQLPool = new SQLManagement();
@@ -36,7 +53,7 @@ const { Console } = require('console');
 const { FINAL_SCHEDULE_COL } = require('../config.js');
 const { start } = require('repl');
 const { resolve } = require('../node_modules/path');
-const client = new MongoClient(config.mongodb.uri, { useUnifiedTopology: true });
+const client = new MongoClient(config.testing.uri, { useUnifiedTopology: true });
 
 app.use(express.static(path.join('public')));
 app.use(express.static(path.join('views')));
@@ -59,7 +76,7 @@ app.get('/mongoInterface', async (req, res) => {
 
 client.connect(async (err, db) => {
   //Set db object
-  let dbo = db.db("ate_model");
+  let dbo = db.db(config.testing.db);
   let collection = dbo.collection("realtime_raw");
   /*** Helpers ***/
   /**
@@ -724,6 +741,7 @@ client.connect(async (err, db) => {
   // Query Params: 
   //    download=true: download local copy
   //    dates=: a date or range of dates for the data to fall between (inclusive)
+  //    day=true      : download the day by day schedule
   // in form [{1} DD/MM/YYYY{1} [, DD/MM/YYYY]? ]{1} (<--regex)
   app.get("/get_raw_data", async (req, res) => {
     let returnData = [];
@@ -981,6 +999,27 @@ client.connect(async (err, db) => {
     }
 
     console.log("Stop sequence update complete  ", allTripIDs[0]);
+  })
+
+  app.get('/pax_km_sanity_check', async (req, res) => {
+    let totalDist, unknownDist;
+    totalDist = Object.values(PAX_KM).reduce( (sum, row) => sum + parseFloat(row["Vehicle kms"]), 0);
+    unknownDist = Object.values(PAX_KM).reduce( (sum, row) => {
+      let vehicleID = row["Rapid vehicle number"];
+      if( vehicleID == "Unknown" || vehicleID == "") {
+        return sum + parseFloat(row["Vehicle kms"]);
+      } else {
+        return sum;
+      } 
+    }, 0);
+    console.log(unknownDist, totalDist, unknownDist/totalDist);
+
+    let raw = await dbo.collection("raw_w_routes")
+      .find({
+        "$and" : [
+          {"date" : { "$gte": "20201224", "$lte": "20201231" }},
+        ]
+      }, {}).toArray();
   })
 
 })
