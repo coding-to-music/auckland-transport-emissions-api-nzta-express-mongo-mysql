@@ -28,22 +28,35 @@ fs.createReadStream('./public/data/Auckland Bus Operator Fleetlist 2020.xlsx - U
   });
 
 let PAX_KM = {};
-let VALID_ROUTES = new Set(); 
+let ROUTES_BY_PROVIDER = fs.readFileSync("./public/data/VALID_ROUTES.json");
+ROUTES_BY_PROVIDER = JSON.parse(ROUTES_BY_PROVIDER);
+let VALID_ROUTES = [];
+    for (let provider of ROUTES_BY_PROVIDER) {
+      console.log(provider);
+      for (let entry of provider["routes_short"]) {
+          console.log(entry);
+          VALID_ROUTES = VALID_ROUTES.concat(entry);
+      }
+    }
+console.log(VALID_ROUTES, ROUTES_BY_PROVIDER);
+
+let distances = {};
 //Parse the pax_km spreadsheet
 fs.createReadStream('./public/data/Vehicle__Pax_Travel_Metrics.csv')
   .pipe(csv())
   .on('data', (row) => {
     let displayRoute = row["Display Route Number"];
     let vehicleID = row["Rapid vehicle number"];
-    if(Object.keys(FLEET_LIST).includes(vehicleID) || VALID_ROUTES.has(displayRoute)) {
+    if( VALID_ROUTES.includes(displayRoute) ) {
       let id = displayRoute + "_" + vehicleID;
       PAX_KM[id] = row;
-      VALID_ROUTES.add(displayRoute);
     }
   })
   .on('end', () => {
     console.log('Pax km CSV file successfully processed');
   });
+
+  console.log(PAX_KM);
 //DB IMPORTS
 const SQLManagement = require("../SQLManagment.js");
 const SQLPool = new SQLManagement();
@@ -78,6 +91,20 @@ client.connect(async (err, db) => {
   //Set db object
   let dbo = db.db(config.testing.db);
   let collection = dbo.collection("realtime_raw");
+  // let routesThatAraValid = await dbo.collection("filtered_trips")
+  //   .aggregate(
+  //     [
+  //       {
+  //         "$group" : {
+  //           "_id" : "$routes.agency_id",
+  //           "routes" : {"$addToSet" : "$route_id"},
+  //           "routes_short" : {"$addToSet" : "$routes.route_short_name"}
+  //         }
+  //       }
+  //     ], {}).toArray();
+  //     console.log(routesThatAraValid);
+  // fs.writeFileSync('./dataBackups/VALID_ROUTES.json', JSON.stringify(routesThatAraValid));
+
   /*** Helpers ***/
   /**
   * Get the schedule once
@@ -503,7 +530,7 @@ client.connect(async (err, db) => {
   app.get("/generate_schedule", async (req, res) => {
     // ************************ FORM RAW DATA ************************
     // Fix this date
-    let dateToCheck = formDateArray(new Date(2021, 0, 13), new Date(2021, 0, 18));
+    let dateToCheck = formDateArray(new Date(2020, 11, 24), new Date(2020, 11, 31));
     let trips = dbo.collection("realtime_raw");
 
     console.log(dateToCheck);
@@ -535,10 +562,10 @@ client.connect(async (err, db) => {
       allowDiskUse: 1
     };
 
-    // console.log("Generating raw_w_routes for filtering...");
-    // await trips.aggregate(lookup, options).toArray();
-    // await dbo.collection("raw_w_routes").createIndex({ "date": 1 }).then(() => { console.log("Indexes created") });
-    // console.log("Collection raw_w_routes has been created!");
+    console.log("Generating raw_w_routes for filtering...");
+    await trips.aggregate(lookup, options).toArray();
+    await dbo.collection("raw_w_routes").createIndex({ "date": 1 }).then(() => { console.log("Indexes created") });
+    console.log("Collection raw_w_routes has been created!");
 
     // ************************ ADD DATA TO SCHEDULE ************************
     console.log("Starting schedule dataset generation pipeline")
@@ -591,7 +618,7 @@ client.connect(async (err, db) => {
     let excss = await dbo.collection("calendarDate").aggregate([
       {
         "$match": {
-          "date": { "$gte": "2021-01-13T00:00:00.000Z", "$lte": "2021-01-23T00:00:00.000Z" },
+          "date": { "$gte": "2020-12-24T00:00:00.000Z", "$lte": "2020-12-31T00:00:00.000Z" },
         }
       },
       {
@@ -606,7 +633,6 @@ client.connect(async (err, db) => {
         }
       }], {}).toArray();
 
-
     let service_ids = [];
     for (let e of excss) {
       service_ids.push(e._id);
@@ -616,8 +642,8 @@ client.connect(async (err, db) => {
     //New docs with UUIDs to add
     // TODO: MAKE THIS QUERY MORE MODULAR
     let docsNeedingUUIDS = await dbo.collection("filtered_trips").find({
-        "service_days.start_date": { "$gte": "2021-01-13T00:00:00.000Z" },
-        "service_days.end_date": { "$lte": "2021-01-23T00:00:00.000Z" },
+        "service_days.start_date": { "$gte": "2020-12-24T00:00:00.000Z" },
+        "service_days.end_date": { "$lte": "2020-12-31T00:00:00.000Z" },
       }, {}).toArray();
       let modifiedDocs = [];
       console.log(docsNeedingUUIDS);
@@ -1031,13 +1057,67 @@ client.connect(async (err, db) => {
       } 
     }, 0);
     console.log(unknownDist, totalDist, unknownDist/totalDist);
+    
+      let routeData = {};
+      let paxData = {};
+      // Check that the distances are the same for each
+      for (let entry of Object.values(PAX_KM)) {
+        if (routeData[entry["Display Route Number"]] != undefined && paxData[entry["Rapid Vehicle Number"]] != undefined) {
+          //PAX on route
+          routeData[entry["Display Route Number"]]["Pax"] = parseFloat(entry["Pax kms"]) + routeData[entry["Display Route Number"]]["Pax"];
+          paxData[entry["Rapid vehicle number"]]["Pax"] = parseFloat(entry["Pax kms"]) + paxData[entry["Rapid vehicle number"]]["Pax"];
+          // Distance of route and vehicle
+          routeData[entry["Display Route Number"]]["Dist"] = parseFloat(entry["Vehicle kms"]) + routeData[entry["Display Route Number"]]["Dist"];
+          paxData[entry["Rapid vehicle number"]]["Dist"] = parseFloat(entry["Vehicle kms"]) + paxData[entry["Rapid vehicle number"]]["Dist"];
+          // Trips of route and vehicle
+          routeData[entry["Display Route Number"]]["Journeys"] = parseFloat(entry["Vehicle trips"]) + routeData[entry["Display Route Number"]]["Journeys"];
+          paxData[entry["Rapid vehicle number"]]["Journeys"] = parseFloat(entry["Vehicle trips"]) + paxData[entry["Rapid vehicle number"]]["Journeys"];
+        } else {
+          routeData[entry["Display Route Number"]] = {};
+          paxData[entry["Rapid vehicle number"]] = {};
+          //PAX on route
+          routeData[entry["Display Route Number"]]["Pax"] = parseFloat(entry["Pax kms"]);
+          paxData[entry["Rapid vehicle number"]]["Pax"] = parseFloat(entry["Pax kms"]);
+          // Distance of route and vehicle
+          routeData[entry["Display Route Number"]]["Dist"] = parseFloat(entry["Vehicle kms"]);
+          paxData[entry["Rapid vehicle number"]]["Dist"] = parseFloat(entry["Vehicle kms"]);
+          // Trips of route and vehicle
+          routeData[entry["Display Route Number"]]["Journeys"] = parseFloat(entry["Vehicle trips"]);
+          paxData[entry["Rapid vehicle number"]]["Journeys"] = parseFloat(entry["Vehicle trips"]);
+        }
+      }
+      console.log(routeData,paxData);
 
-    let raw = await dbo.collection("raw_w_routes")
+      let routeData2 = JSON.parse(JSON.stringify(routeData));
+      let paxData2 = JSON.parse(JSON.stringify(paxData));
+      for (let entry of Object.values(paxData2)) {
+        entry.Journeys = 0;
+      }
+
+      let raw = await dbo.collection("raw_w_routes")
       .find({
         "$and" : [
           {"date" : { "$gte": "20201224", "$lte": "20201231" }},
         ]
       }, {}).toArray();
+      for (let journey of raw) {
+        if (paxData2[journey["vehicle_id"]] != undefined) {
+          paxData2[journey["vehicle_id"]]["Journeys"] = 1 + paxData2[journey["vehicle_id"]]["Journeys"];
+        } else {
+          paxData2[journey["vehicle_id"]] = {};
+          paxData2[journey["vehicle_id"]]["Journeys"] = 1;
+        }
+      }
+
+      let notCorrect = [];
+      let count = 0;
+      for (let j1 of Object.keys(paxData)) {
+        if (paxData[j1].Journeys != paxData2[j1].Journeys) {
+          notCorrect.push({j1 :  paxData[j1].Journeys - paxData2[j1].Journeys});
+          count++;
+        }
+      }
+      console.log(notCorrect, count, Object.keys(paxData).length);
   })
 
 })
