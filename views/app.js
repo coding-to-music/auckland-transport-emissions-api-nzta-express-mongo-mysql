@@ -932,12 +932,26 @@ client.connect(async (err, db) => {
       },
       {
         "$group" : {
-          "_id" : "$Rapid vehicle number",
+          "_id" : "Rapid vehicle number",
           "trips" : {"$sum" : "$Vehicle trips"},
-          "Vehicle_kms" : {"$sum" : "$Vehicle kms"}
+          "Vehicle_kms" : {"$sum" : "$Vehicle kms"},
+          "routes" : {"$addToSet" : "$Display Route Number"}
         }
       }
     ]).toArray();
+
+    let routes = [];
+    let routesThatShouldntBeThere = new Set();
+    for (let entry of buses) {
+      for (let r of entry.routes) {
+        console.log(r.toString());
+        if (!VALID_ROUTES.includes(r.toString())) {
+          routesThatShouldntBeThere.add(r);
+        }
+      }
+      routes = routes.concat(entry.routes);
+    }
+    console.log(routes, routesThatShouldntBeThere);
 
     console.log("Entries of buses in the pax_km collection", buses);
     let raw = await dbo.collection("raw_w_routes")
@@ -951,13 +965,15 @@ client.connect(async (err, db) => {
       },
       {
         "$group" : {
-          "_id" : "$vehicle_id",
-          "trips" : {"$sum" : 1}
+          "_id" : "vehicle_id",
+          "trips" : {"$sum" : 1},
+          "routes" : {"$addToSet" : "$raw_w_route_id.route_short_name"} 
         }
       },
       // {"$group" : {
       //   "_id" : 1,
-      //   "trips" : {"$sum" : "$trips"}
+      //   "trips" : {"$sum" : "$trips"},
+      //   "routes" : {"$push" : "$routes"} 
       // }}
     ], {}).toArray();
 
@@ -1238,7 +1254,7 @@ client.connect(async (err, db) => {
     let joinedTrips = await observedTrips.aggregate(pipe, { allowDiskUse: 1 }).toArray();
     let observedDistance = joinedTrips.reduce( (totalDist, trip) => {
       let tripDist = trip.distance[0];
-      if (tripDist === undefined) { console.log(trip); }
+      if (tripDist === undefined || tripDist < 500) { console.log(trip); }
       return totalDist + trip.distance[0];
     }, 0)
 
