@@ -1262,6 +1262,52 @@ client.connect(async (err, db) => {
     console.log(observedDistance / 1000);
   });
 
+  app.get('/join_raw_routes_to_final', async (req, res) => {
+    await dbo.collection("raw_w_routes").aggregate([
+      {
+        "$match" : {
+          "date" : {"$gte" : "20201224", "$lte" : "20201231"}
+        }
+      },
+      {
+        "$addFields" : {
+          "route_info" : "$raw_w_route_id.0"
+        }
+      },
+      {
+        "$project" : {
+          "raw_w_route_id" : 0
+        }
+      },
+      {
+        "$limit" : 150
+      },
+      {
+        "$lookup" : {
+          "from" : "final_trip_UUID_set",
+          "let" : {"date" : "$date", "trip_id" : "$trip_id"},
+          "pipeline" : [
+            {
+              "$match" : {
+                "$expr" : {
+                  "$and" : [
+                    {"$UUID" : {"$regex" : "/.*$$trip_id.*/"} },
+                    {"$UUID" : {"$regex" : "/^$$date/"} },
+                  ]
+                }
+              }
+            },
+            {
+              "$project" : {
+                "_id" : 0
+              }
+            }
+          ],
+          "as" : "trip_info"
+        }
+      }
+    ])
+  })
 })
 
 // add router in the Express app.
