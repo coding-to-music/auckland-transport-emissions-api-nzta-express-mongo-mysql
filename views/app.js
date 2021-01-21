@@ -24,9 +24,39 @@ fs.createReadStream('./public/data/Auckland Bus Operator Fleetlist 2020.xlsx - U
     }
   })
   .on('end', () => {
-    console.log('CSV file successfully processed');
+    console.log('Fleet list CSV file successfully processed');
   });
 
+let PAX_KM = {};
+let ROUTES_BY_PROVIDER = fs.readFileSync("./public/data/VALID_ROUTES.json");
+ROUTES_BY_PROVIDER = JSON.parse(ROUTES_BY_PROVIDER);
+let VALID_ROUTES = [];
+let VALID_VEHICLES = [];
+    for (let provider of ROUTES_BY_PROVIDER) {
+      for (let entry of provider["routes_short"]) {
+          VALID_ROUTES = VALID_ROUTES.concat(entry);
+      }
+    }
+console.log(VALID_ROUTES, ROUTES_BY_PROVIDER);
+
+let distances = {};
+//Parse the pax_km spreadsheet
+fs.createReadStream('./public/data/Vehicle__Pax_Travel_Metrics.csv')
+  .pipe(csv())
+  .on('data', (row) => {
+    let displayRoute = row["Display Route Number"];
+    let vehicleID = row["Rapid vehicle number"];
+    if( VALID_ROUTES.includes(displayRoute) ) {
+      let id = displayRoute + "_" + vehicleID;
+      VALID_VEHICLES.push(parseInt(vehicleID));
+      PAX_KM[id] = row;
+    }
+  })
+  .on('end', () => {
+    console.log('Pax km CSV file successfully processed');
+  });
+
+  console.log(PAX_KM);
 //DB IMPORTS
 const SQLManagement = require("../SQLManagment.js");
 const SQLPool = new SQLManagement();
@@ -36,7 +66,7 @@ const { Console } = require('console');
 const { FINAL_SCHEDULE_COL } = require('../config.js');
 const { start } = require('repl');
 const { resolve } = require('../node_modules/path');
-const client = new MongoClient(config.mongodb.uri, { useUnifiedTopology: true });
+const client = new MongoClient(config.testing.uri, { useUnifiedTopology: true });
 
 app.use(express.static(path.join('public')));
 app.use(express.static(path.join('views')));
@@ -59,8 +89,22 @@ app.get('/mongoInterface', async (req, res) => {
 
 client.connect(async (err, db) => {
   //Set db object
-  let dbo = db.db("ate_model");
+  let dbo = db.db(config.testing.db);
   let collection = dbo.collection("realtime_raw");
+  // let routesThatAraValid = await dbo.collection("filtered_trips")
+  //   .aggregate(
+  //     [
+  //       {
+  //         "$group" : {
+  //           "_id" : "$routes.agency_id",
+  //           "routes" : {"$addToSet" : "$route_id"},
+  //           "routes_short" : {"$addToSet" : "$routes.route_short_name"}
+  //         }
+  //       }
+  //     ], {}).toArray();
+  //     console.log(routesThatAraValid);
+  // fs.writeFileSync('./dataBackups/VALID_ROUTES.json', JSON.stringify(routesThatAraValid));
+
   /*** Helpers ***/
   /**
   * Get the schedule once
@@ -102,13 +146,13 @@ client.connect(async (err, db) => {
 
   app.get('/distinct', async (req, res) => {
     //render page  
-    await collection.distinct("UUID", {}, {}, function (err, results) {
+    await dbo.collection("raw_w_routes").distinct("UUID", {"date" : {"$gte" : "20201224", "$lte" : "20201231"}}, {}, function (err, results) {
       if (err) throw err;
       console.log(results.length)
       res.send(results);
     })
 
-    await collection.find({}, {}).toArray((err, docs) => {
+    await dbo.collection("raw_w_routes").find({}, {}).toArray((err, docs) => {
       if (err) throw err;
       console.log(docs.length)
     })
@@ -486,7 +530,7 @@ client.connect(async (err, db) => {
   app.get("/generate_schedule", async (req, res) => {
     // ************************ FORM RAW DATA ************************
     // Fix this date
-    let dateToCheck = formDateArray(new Date(2021, 0, 13), new Date(2021, 0, 18));
+    let dateToCheck = formDateArray(new Date(2020, 11, 24), new Date(2020, 11, 31));
     let trips = dbo.collection("realtime_raw");
 
     console.log(dateToCheck);
@@ -518,10 +562,10 @@ client.connect(async (err, db) => {
       allowDiskUse: 1
     };
 
-    // console.log("Generating raw_w_routes for filtering...");
-    // await trips.aggregate(lookup, options).toArray();
-    // await dbo.collection("raw_w_routes").createIndex({ "date": 1 }).then(() => { console.log("Indexes created") });
-    // console.log("Collection raw_w_routes has been created!");
+    console.log("Generating raw_w_routes for filtering...");
+    await trips.aggregate(lookup, options).toArray();
+    await dbo.collection("raw_w_routes").createIndex({ "date": 1 }).then(() => { console.log("Indexes created") });
+    console.log("Collection raw_w_routes has been created!");
 
     // ************************ ADD DATA TO SCHEDULE ************************
     console.log("Starting schedule dataset generation pipeline")
@@ -574,7 +618,7 @@ client.connect(async (err, db) => {
     let excss = await dbo.collection("calendarDate").aggregate([
       {
         "$match": {
-          "date": { "$gte": "2021-01-13T00:00:00.000Z", "$lte": "2021-01-23T00:00:00.000Z" },
+          "date": { "$gte": "2020-12-24T00:00:00.000Z", "$lte": "2020-12-31T00:00:00.000Z" },
         }
       },
       {
@@ -589,7 +633,6 @@ client.connect(async (err, db) => {
         }
       }], {}).toArray();
 
-
     let service_ids = [];
     for (let e of excss) {
       service_ids.push(e._id);
@@ -599,8 +642,8 @@ client.connect(async (err, db) => {
     //New docs with UUIDs to add
     // TODO: MAKE THIS QUERY MORE MODULAR
     let docsNeedingUUIDS = await dbo.collection("filtered_trips").find({
-        "service_days.start_date": { "$gte": "2021-01-13T00:00:00.000Z" },
-        "service_days.end_date": { "$lte": "2021-01-23T00:00:00.000Z" },
+        "service_days.start_date": { "$gte": "2020-12-24T00:00:00.000Z" },
+        "service_days.end_date": { "$lte": "2020-12-31T00:00:00.000Z" },
       }, {}).toArray();
       let modifiedDocs = [];
       console.log(docsNeedingUUIDS);
@@ -724,30 +767,49 @@ client.connect(async (err, db) => {
   // Query Params: 
   //    download=true: download local copy
   //    dates=: a date or range of dates for the data to fall between (inclusive)
+  //    day=true      : download the day by day schedule
   // in form [{1} DD/MM/YYYY{1} [, DD/MM/YYYY]? ]{1} (<--regex)
   app.get("/get_raw_data", async (req, res) => {
     let returnData = [];
     let dates = req.query.dates != undefined ? formDateArrayFromQuery(req.query.dates) : formDateArray(new Date(23,11,2020), new Date(12,0,2021));
-    for (let date of dates) {
-      let data = await dbo.collection("realtime_raw").find({ "date": date }).toArray();
+    console.log(dates);
+    //If day arg, download by day
+    if (req.query.day === 'true') {
+      for (let date of dates) {
+        let data = await dbo.collection("realtime_raw").find({ "date": date }).toArray();
+        returnData.push(data);
+        if (req.query.download === 'true') {
+          try {
+            console.log("Attempting to overwrite existing file");
+            fs.writeFileSync("./dataBackups/realtime_raw_" + date + ".json", JSON.stringify(data));
+          } catch (err) {
+            console.log("File does not exist ¯\\_(ツ)_/¯, creating...");
+            fs.appendFileSync("./dataBackups/realtime_raw_" + date + ".json", JSON.stringify(data));
+          }
+          console.log(date + " has been downloaded and written to dataBackups!");
+        }
+      }
+      res.send(returnData);
+    } else {
+      let data = await dbo.collection("realtime_raw").find({ "date" : { "$in" : dates }}).toArray();
       returnData.push(data);
       if (req.query.download === 'true') {
         try {
           console.log("Attempting to overwrite existing file");
-          fs.writeFileSync("./dataBackups/realtime_raw_" + date + ".json", JSON.stringify(data));
+          fs.writeFileSync("./dataBackups/realtime_raw_" + dates[0] + "-" + dates[dates.length - 1] + ".json", JSON.stringify(data));
         } catch (err) {
           console.log("File does not exist ¯\\_(ツ)_/¯, creating...");
-          fs.appendFileSync("./dataBackups/realtime_raw_" + date + ".json", JSON.stringify(data));
+          fs.appendFileSync("./dataBackups/realtime_raw_" + dates[0] + "-" + dates[dates.length - 1] + ".json", JSON.stringify(data));
         }
-        console.log(date + " has been downloaded and written to dataBackups!");
+        console.log(dates[0] + " has been downloaded and written to dataBackups!");
       }
+      res.send(returnData);
     }
-    res.send(returnData);
     // let a = res.write("bitches", 'utf-8');
     // let b = res.write("bitches", 'utf-8');
     // console.log(a);
     // res.end("5");
-  })
+  });
 
   // Get the processed schedule data provided by the AT API
   // Creates a local copy of each day.
@@ -837,6 +899,110 @@ client.connect(async (err, db) => {
     // }
     await dbo.collection("journey_needing_distances").insertMany(notMatching, {});
     res.send(notMatching);
+  })
+
+  // This sets up the pax_km collection as raw data in the mongo.
+  // The data is easier for me to handle in the mongo than js
+  app.get('/setupPAXKm_collection', async (req, res) => {
+    // let pax_post = Object.keys(PAX_KM).map(d => {
+    //   // LOL JS
+    //   // Please tell me there is a better way to do this
+    //   let r = {};
+    //   r[d] = "";
+    //   return r;
+    // }); 
+    // for (let entry of pax_post) {
+    //   for (let key of Object.keys(entry)) {
+    //     entry[key] = PAX_KM[key];
+    //   }
+    // }
+    
+    // console.log(pax_post);
+    // await dbo.collection("pax_km").insertMany(PAX_KM);
+  })
+
+  app.get('/test_mongo_pax', async (req, res) => {
+    console.log(ROUTES_BY_PROVIDER, VALID_VEHICLES);
+    // Match all the trips done by the providers
+    let buses = await dbo.collection("pax_km").aggregate([
+      {
+        "$match" : {
+          "Rapid vehicle number" : {"$in" : VALID_VEHICLES}
+        }
+      },
+      {
+        "$group" : {
+          "_id" : "Rapid vehicle number",
+          "trips" : {"$sum" : "$Vehicle trips"},
+          "Vehicle_kms" : {"$sum" : "$Vehicle kms"},
+          "routes" : {"$addToSet" : "$Display Route Number"}
+        }
+      }
+    ]).toArray();
+
+    let routes = [];
+    let routesThatShouldntBeThere = new Set();
+    for (let entry of buses) {
+      for (let r of entry.routes) {
+        console.log(r.toString());
+        if (!VALID_ROUTES.includes(r.toString())) {
+          routesThatShouldntBeThere.add(r);
+        }
+      }
+      routes = routes.concat(entry.routes);
+    }
+    console.log(routes, routesThatShouldntBeThere);
+
+    console.log("Entries of buses in the pax_km collection", buses);
+    let raw = await dbo.collection("raw_w_routes")
+    .aggregate([
+      {"$match" : {
+          "$and" : [
+            {"date" : { "$gte": "20201224", "$lte": "20201231" }},
+            {"raw_w_route_id.0.agency_id" : {"$in" : ["GBT", "RTH"]}}
+          ]
+        }
+      },
+      {
+        "$group" : {
+          "_id" : "vehicle_id",
+          "trips" : {"$sum" : 1},
+          "routes" : {"$addToSet" : "$raw_w_route_id.route_short_name"} 
+        }
+      },
+      // {"$group" : {
+      //   "_id" : 1,
+      //   "trips" : {"$sum" : "$trips"},
+      //   "routes" : {"$push" : "$routes"} 
+      // }}
+    ], {}).toArray();
+
+    console.log("Entries in raw data between 24/12 - 31/12", raw);
+    let notCorrect = [];
+    let missing = [];
+    let count = 0;
+    for (let j1 of raw) {
+      let notPresent = true;
+      for (let entry of buses) {
+        if (parseInt(j1._id) === entry._id) {
+          if (j1.trips != entry.trips) {
+            let r = {};
+            r[j1._id] = j1.trips - entry.trips;
+            notCorrect.push(r);
+            count++;
+            notPresent = false;
+          }
+        }
+      }
+      if (notPresent) {
+        missing.push(j1);
+      }
+    }
+    console.log("Buses whose journeys do not match:", notCorrect);
+    console.log("Buses present in raw but not in pax_km", missing); 
+    console.log("Count of buses shared between collections", count);
+    console.log("Count of buses in raw", raw.length);
+    console.log("Count of buses in pax_km", buses.length);
   })
 
   app.get('/get_shapes', async (req, res) => {
@@ -982,6 +1148,119 @@ client.connect(async (err, db) => {
 
     console.log("Stop sequence update complete  ", allTripIDs[0]);
   })
+
+  app.get('/pax_km_sanity_check', async (req, res) => {
+    let totalDist, unknownDist;
+    totalDist = Object.values(PAX_KM).reduce( (sum, row) => sum + parseFloat(row["Vehicle kms"]), 0);
+    unknownDist = Object.values(PAX_KM).reduce( (sum, row) => {
+      let vehicleID = row["Rapid vehicle number"];
+      if( vehicleID == "Unknown" || vehicleID == "") {
+        return sum + parseFloat(row["Vehicle kms"]);
+      } else {
+        return sum;
+      } 
+    }, 0);
+    console.log(unknownDist, totalDist, unknownDist/totalDist);
+    
+      let routeData = {};
+      let paxData = {};
+      // Check that the distances are the same for each
+      for (let entry of Object.values(PAX_KM)) {
+        if (routeData[entry["Display Route Number"]] != undefined && paxData[entry["Rapid Vehicle Number"]] != undefined) {
+          //PAX on route
+          routeData[entry["Display Route Number"]]["Pax"] = parseFloat(entry["Pax kms"]) + routeData[entry["Display Route Number"]]["Pax"];
+          paxData[entry["Rapid vehicle number"]]["Pax"] = parseFloat(entry["Pax kms"]) + paxData[entry["Rapid vehicle number"]]["Pax"];
+          // Distance of route and vehicle
+          routeData[entry["Display Route Number"]]["Dist"] = parseFloat(entry["Vehicle kms"]) + routeData[entry["Display Route Number"]]["Dist"];
+          paxData[entry["Rapid vehicle number"]]["Dist"] = parseFloat(entry["Vehicle kms"]) + paxData[entry["Rapid vehicle number"]]["Dist"];
+          // Trips of route and vehicle
+          routeData[entry["Display Route Number"]]["Journeys"] = parseFloat(entry["Vehicle trips"]) + routeData[entry["Display Route Number"]]["Journeys"];
+          paxData[entry["Rapid vehicle number"]]["Journeys"] = parseFloat(entry["Vehicle trips"]) + paxData[entry["Rapid vehicle number"]]["Journeys"];
+        } else {
+          routeData[entry["Display Route Number"]] = {};
+          paxData[entry["Rapid vehicle number"]] = {};
+          //PAX on route
+          routeData[entry["Display Route Number"]]["Pax"] = parseFloat(entry["Pax kms"]);
+          paxData[entry["Rapid vehicle number"]]["Pax"] = parseFloat(entry["Pax kms"]);
+          // Distance of route and vehicle
+          routeData[entry["Display Route Number"]]["Dist"] = parseFloat(entry["Vehicle kms"]);
+          paxData[entry["Rapid vehicle number"]]["Dist"] = parseFloat(entry["Vehicle kms"]);
+          // Trips of route and vehicle
+          routeData[entry["Display Route Number"]]["Journeys"] = parseFloat(entry["Vehicle trips"]);
+          paxData[entry["Rapid vehicle number"]]["Journeys"] = parseFloat(entry["Vehicle trips"]);
+        }
+      }
+      console.log(routeData,paxData);
+
+      let routeData2 = JSON.parse(JSON.stringify(routeData));
+      let paxData2 = JSON.parse(JSON.stringify(paxData));
+      for (let entry of Object.values(paxData2)) {
+        entry.Journeys = 0;
+      }
+
+      let raw = await dbo.collection("raw_w_routes")
+      .find({
+        "$and" : [
+          {"date" : { "$gte": "20201224", "$lte": "20201231" }},
+        ]
+      }, {}).toArray();
+      for (let journey of raw) {
+        if (paxData2[journey["vehicle_id"]] != undefined) {
+          paxData2[journey["vehicle_id"]]["Journeys"] = 1 + paxData2[journey["vehicle_id"]]["Journeys"];
+        } else {
+          paxData2[journey["vehicle_id"]] = {};
+          paxData2[journey["vehicle_id"]]["Journeys"] = 1;
+        }
+      }
+
+      let notCorrect = [];
+      let count = 0;
+      for (let j1 of Object.keys(paxData)) {
+        if (paxData[j1].Journeys != paxData2[j1].Journeys) {
+          notCorrect.push({j1 :  paxData[j1].Journeys - paxData2[j1].Journeys});
+          count++;
+        }
+      }
+      console.log(notCorrect, count, Object.keys(paxData).length);
+  })
+
+  app.get('/generate_observed_distance', async (req, res) => {
+    let observedTrips = await dbo.collection("raw_w_routes");
+    let dates = formDateArray(new Date(2020, 11, 24), new Date(2021, 00, 01));
+
+    console.log(dates)
+
+    let pipe = [
+      { 
+        "$match" : {
+          "date" : { "$in" : dates }
+        } 
+      },
+      {
+        "$lookup": {
+          "from": "final_trip_UUID_set",
+          "localField": "trip_id",
+          "foreignField": "trip_id",
+          "as": "trip_info"
+        }
+      },
+      {
+        "$addFields" : {
+          "distance" : "$trip_info.distance"
+        }
+      }
+    ];
+
+    let joinedTrips = await observedTrips.aggregate(pipe, { allowDiskUse: 1 }).toArray();
+    let observedDistance = joinedTrips.reduce( (totalDist, trip) => {
+      let tripDist = trip.distance[0];
+      if (tripDist === undefined || tripDist < 500) { console.log(trip); }
+      return totalDist + trip.distance[0];
+    }, 0)
+
+    console.log(joinedTrips);
+    console.log(observedDistance / 1000);
+  });
 
 })
 
