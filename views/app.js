@@ -1120,6 +1120,44 @@ client.connect(async (err, db) => {
       console.log(notCorrect, count, Object.keys(paxData).length);
   })
 
+  app.get('/generate_observed_distance', async (req, res) => {
+    let observedTrips = await dbo.collection("raw_w_routes");
+    let dates = formDateArray(new Date(2020, 11, 24), new Date(2021, 00, 01));
+
+    console.log(dates)
+
+    let pipe = [
+      { 
+        "$match" : {
+          "date" : { "$in" : dates }
+        } 
+      },
+      {
+        "$lookup": {
+          "from": "final_trip_UUID_set",
+          "localField": "trip_id",
+          "foreignField": "trip_id",
+          "as": "trip_info"
+        }
+      },
+      {
+        "$addFields" : {
+          "distance" : "$trip_info.distance"
+        }
+      }
+    ];
+
+    let joinedTrips = await observedTrips.aggregate(pipe, { allowDiskUse: 1 }).toArray();
+    let observedDistance = joinedTrips.reduce( (totalDist, trip) => {
+      let tripDist = trip.distance[0];
+      if (tripDist === undefined) { console.log(trip); }
+      return totalDist + trip.distance[0];
+    }, 0)
+
+    console.log(joinedTrips);
+    console.log(observedDistance);
+  });
+
 })
 
 // add router in the Express app.
