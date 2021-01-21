@@ -31,10 +31,9 @@ let PAX_KM = {};
 let ROUTES_BY_PROVIDER = fs.readFileSync("./public/data/VALID_ROUTES.json");
 ROUTES_BY_PROVIDER = JSON.parse(ROUTES_BY_PROVIDER);
 let VALID_ROUTES = [];
+let VALID_VEHICLES = [];
     for (let provider of ROUTES_BY_PROVIDER) {
-      console.log(provider);
       for (let entry of provider["routes_short"]) {
-          console.log(entry);
           VALID_ROUTES = VALID_ROUTES.concat(entry);
       }
     }
@@ -49,6 +48,7 @@ fs.createReadStream('./public/data/Vehicle__Pax_Travel_Metrics.csv')
     let vehicleID = row["Rapid vehicle number"];
     if( VALID_ROUTES.includes(displayRoute) ) {
       let id = displayRoute + "_" + vehicleID;
+      VALID_VEHICLES.push(parseInt(vehicleID));
       PAX_KM[id] = row;
     }
   })
@@ -146,13 +146,13 @@ client.connect(async (err, db) => {
 
   app.get('/distinct', async (req, res) => {
     //render page  
-    await collection.distinct("UUID", {}, {}, function (err, results) {
+    await dbo.collection("raw_w_routes").distinct("UUID", {"date" : {"$gte" : "20201224", "$lte" : "20201231"}}, {}, function (err, results) {
       if (err) throw err;
       console.log(results.length)
       res.send(results);
     })
 
-    await collection.find({}, {}).toArray((err, docs) => {
+    await dbo.collection("raw_w_routes").find({}, {}).toArray((err, docs) => {
       if (err) throw err;
       console.log(docs.length)
     })
@@ -901,6 +901,94 @@ client.connect(async (err, db) => {
     res.send(notMatching);
   })
 
+  // This sets up the pax_km collection as raw data in the mongo.
+  // The data is easier for me to handle in the mongo than js
+  app.get('/setupPAXKm_collection', async (req, res) => {
+    // let pax_post = Object.keys(PAX_KM).map(d => {
+    //   // LOL JS
+    //   // Please tell me there is a better way to do this
+    //   let r = {};
+    //   r[d] = "";
+    //   return r;
+    // }); 
+    // for (let entry of pax_post) {
+    //   for (let key of Object.keys(entry)) {
+    //     entry[key] = PAX_KM[key];
+    //   }
+    // }
+    
+    // console.log(pax_post);
+    // await dbo.collection("pax_km").insertMany(PAX_KM);
+  })
+
+  app.get('/test_mongo_pax', async (req, res) => {
+    console.log(ROUTES_BY_PROVIDER, VALID_VEHICLES);
+    // Match all the trips done by the providers
+    let buses = await dbo.collection("pax_km").aggregate([
+      {
+        "$match" : {
+          "Rapid vehicle number" : {"$in" : VALID_VEHICLES}
+        }
+      },
+      {
+        "$group" : {
+          "_id" : "$Rapid vehicle number",
+          "trips" : {"$sum" : "$Vehicle trips"},
+          "Vehicle_kms" : {"$sum" : "$Vehicle kms"}
+        }
+      }
+    ]).toArray();
+
+    console.log("Entries of buses in the pax_km collection", buses);
+    let raw = await dbo.collection("raw_w_routes")
+    .aggregate([
+      {"$match" : {
+          "$and" : [
+            {"date" : { "$gte": "20201224", "$lte": "20201231" }},
+            {"raw_w_route_id.0.agency_id" : {"$in" : ["GBT", "RTH"]}}
+          ]
+        }
+      },
+      {
+        "$group" : {
+          "_id" : "$vehicle_id",
+          "trips" : {"$sum" : 1}
+        }
+      },
+      // {"$group" : {
+      //   "_id" : 1,
+      //   "trips" : {"$sum" : "$trips"}
+      // }}
+    ], {}).toArray();
+
+    console.log("Entries in raw data between 24/12 - 31/12", raw);
+    let notCorrect = [];
+    let missing = [];
+    let count = 0;
+    for (let j1 of raw) {
+      let notPresent = true;
+      for (let entry of buses) {
+        if (parseInt(j1._id) === entry._id) {
+          if (j1.trips != entry.trips) {
+            let r = {};
+            r[j1._id] = j1.trips - entry.trips;
+            notCorrect.push(r);
+            count++;
+            notPresent = false;
+          }
+        }
+      }
+      if (notPresent) {
+        missing.push(j1);
+      }
+    }
+    console.log("Buses whose journeys do not match:", notCorrect);
+    console.log("Buses present in raw but not in pax_km", missing); 
+    console.log("Count of buses shared between collections", count);
+    console.log("Count of buses in raw", raw.length);
+    console.log("Count of buses in pax_km", buses.length);
+  })
+
   app.get('/get_shapes', async (req, res) => {
     let missingDistances = await dbo.collection("journey_needing_distances").find({}, {}).toArray();
     let shape_ids = new Set();
@@ -1155,7 +1243,7 @@ client.connect(async (err, db) => {
     }, 0)
 
     console.log(joinedTrips);
-    console.log(observedDistance);
+    console.log(observedDistance / 1000);
   });
 
 })
