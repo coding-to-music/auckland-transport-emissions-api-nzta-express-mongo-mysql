@@ -15,6 +15,7 @@ config.mongodb = {};
 config.mongodb.user = "chris";
 config.mongodb.password = "YFwh2XjNZ2XY8cv9";
 config.mongodb.uri = `mongodb+srv://${config.mongodb.user}:${config.mongodb.password}@cluster0.l7ehu.mongodb.net/ate_model?retryWrites=true&w=majority`;
+config.mongodb.db = 'ate_model';
 
 //COLLECTION NAMES
 config.REALTIME_RAW = "realtime_raw";
