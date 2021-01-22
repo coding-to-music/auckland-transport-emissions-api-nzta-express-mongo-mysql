@@ -37,7 +37,6 @@ let VALID_VEHICLES = [];
           VALID_ROUTES = VALID_ROUTES.concat(entry);
       }
     }
-console.log(VALID_ROUTES, ROUTES_BY_PROVIDER);
 
 let distances = {};
 //Parse the pax_km spreadsheet
@@ -66,7 +65,7 @@ const { Console } = require('console');
 const { FINAL_SCHEDULE_COL } = require('../config.js');
 const { start } = require('repl');
 const { resolve } = require('../node_modules/path');
-const client = new MongoClient(config.testing.uri, { useUnifiedTopology: true });
+const client = new MongoClient(config.mongodb.uri, { useUnifiedTopology: true });
 
 app.use(express.static(path.join('public')));
 app.use(express.static(path.join('views')));
@@ -89,7 +88,7 @@ app.get('/mongoInterface', async (req, res) => {
 
 client.connect(async (err, db) => {
   //Set db object
-  let dbo = db.db(config.testing.db);
+  let dbo = db.db(config.mongodb.db);
   let collection = dbo.collection("realtime_raw");
   // let routesThatAraValid = await dbo.collection("filtered_trips")
   //   .aggregate(
@@ -1262,6 +1261,163 @@ client.connect(async (err, db) => {
     console.log(observedDistance / 1000);
   });
 
+  app.get('/join_raw_routes_to_final', async (req, res) => {
+    // let needSpeed = await dbo.collection("raw_w_routes").aggregate([
+    //   {
+    //     "$match" : {
+    //       "date" : {"$gte" : "20201224", "$lte" : "20201231"}
+    //     }
+    //   },
+    //   {
+    //     "$addFields" : {
+    //       "route_info" : {"$arrayElemAt" : ["$raw_w_route_id", 0]}
+    //     }
+    //   },
+    //   {
+    //     "$project" : {
+    //       "raw_w_route_id" : 0
+    //     }
+    //   },
+    //   {
+    //     "$limit" : 150
+    //   },
+    //   {
+    //     "$lookup" : {
+    //       "from" : "final_trip_UUID_set",
+    //       "let" : {"date" : "$date", "trip_id" : "$trip_id"},
+    //       "pipeline" : [
+    //         {
+    //           "$match" : {
+    //               "$expr" : {
+    //                 "$and" : [
+    //                   {"$regexMatch" : {"input" : {"$each" : "$UUID"}, "regex": "/^$$date/"}}
+    //                 ],
+    //               }
+    //             }
+    //         },
+    //         {
+    //           "$project" : {
+    //             "_id" : 0
+    //           }
+    //         }
+    //       ],
+    //       "as" : "trip_info"
+    //     }
+    //   }
+    // ]).toArray();
+  // console.log(needSpeed);
+  let match = [];
+  for (let date of formDateArray(new Date(2020, 11, 24), new Date(2021, 0, 1))) {
+    match.push({"UUID" : new RegExp("^" + date)});
+  }
+  await dbo.collection("final_trip_UUID_set").createIndex({"UUID" : 1});
+  await dbo.collection("raw_w_routes").createIndex({"UUID" : 1});
+  console.log("Yee we running")
+  let needSpeed = await dbo.collection("final_trip_UUID_set").aggregate([
+    {
+      "$match" : {
+        "$or" : match
+      }
+    },
+    // {
+    //   "$limit" : 10
+    // },
+    {
+      "$project" : {
+        "UUID" : {
+          "$filter" : {
+            "input" : "$UUID",
+            "as": "journey",
+            "cond" : {
+              "$and" : [
+                {"$gte" : [{"$arrayElemAt" : [{"$split": ["$$journey", "-"]},0]}, "20201224"]},
+                {"$lte" : [{"$arrayElemAt" : [{"$split": ["$$journey", "-"]},0]}, "20201231"]},
+              ]
+            }
+          }
+        },
+        "route_id" : 1,
+        "service_id" :  1,
+        "trip_id" : 1,
+        "trip_headsign" : 1,
+        "direction_id" : 1,
+        "block_id" : 1,
+        "shape_id" : 1,
+        "trip_short_name" : 1,
+        "trip_type" : 1,
+        "distance" : 1,
+        "number_stops" : 1,
+        "agency_id" : 1,
+        "route_short_name" : 1,
+        "route_long_name" : 1,
+        "route_type" : 1,
+        "calendar_services" : 1
+      }
+    },
+    {
+      "$unwind" : "$UUID"
+    },
+    {
+      "$project" : {
+        "_id" : 0
+      }
+    },
+    {
+      "$lookup" : {
+        "from" : "raw_w_routes",
+        "localField" : "UUID",
+        "foreignField" : "UUID",
+        "as" : "realtime_observation"
+      }
+    },
+    {
+      "$set" : {
+        "agency_id" : {"$arrayElemAt" : ["$agency_id",0]},
+        "realtime_observation" : {"$arrayElemAt" : ["$realtime_observation",0]},
+        "route_short_name" : {"$arrayElemAt" : ["$route_short_name",0]},
+        "route_long_name" : {"$arrayElemAt" : ["$route_long_name",0]},
+        "route_type" : {"$arrayElemAt" : ["$route_type",0]},
+      }
+    },
+    {
+      "$addFields" : {
+        "departure" : "$realtime_observation.start_time",
+      }
+    },
+  ]).toArray();
+
+  let missing = {
+    "noObservation" : 0,
+    "noStopTime" : 0,
+    "noVehicle" : 0,
+  };
+  for (let journey of needSpeed) {
+    if (journey.realtime_observation != undefined) {
+      let timeSplit = journey.realtime_observation.start_time.split(":");
+      let startTime = new Date(journey.realtime_observation.date.slice(0, 4), (parseInt(journey.realtime_observation.date.slice(4, 6)) - 1), journey.realtime_observation.date.slice(6, 8), timeSplit[0], timeSplit[1])
+      if (journey.realtime_observation.stop_time_arrival != undefined) {
+        let endTime = new Date( parseInt(journey.realtime_observation.stop_time_arrival.time * 1000));
+        console.log(Math.abs(endTime - startTime), startTime, endTime);
+        journey.speed = (journey.distance) / (Math.abs(endTime - startTime) / 1000);
+        journey.time = (Math.abs(endTime - startTime) / 1000);
+        console.log(journey.realtime_observation.vehicle_id);
+        if (FLEET_LIST[journey.realtime_observation.vehicle_id] != undefined) {
+          journey.engine_type = FLEET_LIST[journey.realtime_observation.vehicle_id]["Engine Rating"];
+        } else {
+          missing.noVehicle++;
+        }
+      } else {
+        missing.noStopTime++;
+      }
+    } else {
+      missing.noObservation++;
+    }
+  }
+  console.log(needSpeed, missing);
+
+  await dbo.collection("main_collection").insertMany(needSpeed);
+  console.log("Finished adding speeds to collection");
+  })
 })
 
 // add router in the Express app.
