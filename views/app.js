@@ -1418,6 +1418,47 @@ client.connect(async (err, db) => {
   await dbo.collection("main_collection").insertMany(needSpeed);
   console.log("Finished adding speeds to collection");
   })
+
+  app.get('/calculate_emissions', async (req, res) => {
+    let carbonCalc = require("../models/carbon-calc.js");
+    let weightFactors = require("../models/weight-factor.js");
+    let trips = await dbo.collection("main_collection").aggregate([
+      {
+        "$limit" : 10
+      }
+    ]).toArray();
+    trips.forEach((element) => {
+      let vehicle = FLEET_LIST[element.realtime_observation.vehicle_id];
+      let weight_ratio = (0.00004711 * parseInt(vehicle["TARE Weight (Kg)"])) + 0.446;
+      // weightFactors.weight_factor(vehicle["Bus Size"], parseInt(vehicle["TARE Weight (KG)"]), parseInt(element["pax_km"]), element.distance); 
+
+      // Change to all pollutants
+      for (let p of ["FC", "CO", "CO2-equiv"]) {
+        let total = 0;
+        if (p === "CO2-equiv") {
+          total = carbonCalc.calc_CO2_equiv(element["FC"], element.distance, element.engine_type);
+        } else if (element.engine_type === 'ELECTRIC') {
+          total = 0;
+        } else {
+          //Use the emissions profiles from the requires, look at how its done in the index.js
+          //Look at getting the information for the emissions profiles id from the trip
+          //lookup the function from pollutant_equations
+          //yay?
+          // let vprof = vehicle.profile[p];
+          // let size = vehicle["Bus Size"] === "SV" ? "Small" : "Standard";
+          let vprof = config.EMISSION_PROFILES.filter(d => { return d._id.size === "Standard" && d._id.engine === element.engine_type && d._id.Pollutant === p })[0];
+          let prof = config.pollutant_equations[vprof.equation];
+          let emissions_km = ((1 / 0.835) * prof(element.speed, vprof.a, vprof.b, vprof.c, vprof.d, vprof.e, vprof.f, vprof.g)) / 1000;
+          let service = emissions_km * weight_ratio * (element.distance);
+          let repos = emissions_km * weight_ratio * (0.15 * element.distance);
+          total = service + repos;
+        }
+        let property = p === "CO2-equiv" ? "CO2" : p;
+        element[property] = total;
+      }
+    });
+    console.log(trips);
+  })
 })
 
 // add router in the Express app.
