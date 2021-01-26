@@ -14,6 +14,7 @@ const geolib = require('../node_modules/geolib');
 const fetch = require('node-fetch');
 
 const fs = require('fs');
+const ObjectsToCsv = require('objects-to-csv');
 let FLEET_LIST = {};
 //Create the fleet list
 fs.createReadStream('./public/data/Auckland Bus Operator Fleetlist 2020.xlsx - Urban Passenger Vehicle List.csv')
@@ -37,7 +38,7 @@ let VALID_VEHICLES = [];
           VALID_ROUTES = VALID_ROUTES.concat(entry);
       }
     }
-
+console.log(VALID_ROUTES);
 let distances = {};
 //Parse the pax_km spreadsheet
 fs.createReadStream('./public/data/Vehicle__Pax_Travel_Metrics.csv')
@@ -65,7 +66,7 @@ const { Console } = require('console');
 const { FINAL_SCHEDULE_COL } = require('../config.js');
 const { start } = require('repl');
 const { resolve } = require('../node_modules/path');
-const client = new MongoClient(config.mongodb.uri, { useUnifiedTopology: true });
+const client = new MongoClient(config.testing.uri, { useUnifiedTopology: true });
 
 app.use(express.static(path.join('public')));
 app.use(express.static(path.join('views')));
@@ -88,7 +89,7 @@ app.get('/mongoInterface', async (req, res) => {
 
 client.connect(async (err, db) => {
   //Set db object
-  let dbo = db.db(config.mongodb.db);
+  let dbo = db.db(config.testing.db);
   let collection = dbo.collection("realtime_raw");
   // let routesThatAraValid = await dbo.collection("filtered_trips")
   //   .aggregate(
@@ -957,7 +958,7 @@ client.connect(async (err, db) => {
     .aggregate([
       {"$match" : {
           "$and" : [
-            {"date" : { "$gte": "20201224", "$lte": "20201231" }},
+            {"date" : { "$gte": "20201224", "$lte": "20201230" }},
             {"raw_w_route_id.0.agency_id" : {"$in" : ["GBT", "RTH"]}}
           ]
         }
@@ -1223,6 +1224,7 @@ client.connect(async (err, db) => {
       console.log(notCorrect, count, Object.keys(paxData).length);
   })
 
+  // Test if the distances we observe are the same as theirs
   app.get('/generate_observed_distance', async (req, res) => {
     let observedTrips = await dbo.collection("raw_w_routes");
     let dates = formDateArray(new Date(2020, 11, 24), new Date(2021, 00, 01));
@@ -1261,6 +1263,7 @@ client.connect(async (err, db) => {
     console.log(observedDistance / 1000);
   });
 
+  // Join the raw to the final. Used to calc speed
   app.get('/join_raw_routes_to_final', async (req, res) => {
     // let needSpeed = await dbo.collection("raw_w_routes").aggregate([
     //   {
@@ -1397,7 +1400,6 @@ client.connect(async (err, db) => {
       let startTime = new Date(journey.realtime_observation.date.slice(0, 4), (parseInt(journey.realtime_observation.date.slice(4, 6)) - 1), journey.realtime_observation.date.slice(6, 8), timeSplit[0], timeSplit[1])
       if (journey.realtime_observation.stop_time_arrival != undefined) {
         let endTime = new Date( parseInt(journey.realtime_observation.stop_time_arrival.time * 1000));
-        console.log(Math.abs(endTime - startTime), startTime, endTime);
         journey.speed = (journey.distance) / (Math.abs(endTime - startTime) / 1000);
         journey.time = (Math.abs(endTime - startTime) / 1000);
         console.log(journey.realtime_observation.vehicle_id);
@@ -1413,51 +1415,79 @@ client.connect(async (err, db) => {
       missing.noObservation++;
     }
   }
-  console.log(needSpeed, missing);
+    console.log(needSpeed, missing);
 
-  await dbo.collection("main_collection").insertMany(needSpeed);
-  console.log("Finished adding speeds to collection");
+    await dbo.collection("main_collection").insertMany(needSpeed);
+    console.log("Finished adding speeds to collection");
   })
 
+  // Join the pax_km to the 
+  app.get('/join_pax_km', async (req, res) => {
+
+  })
+
+  // Using speed, pax km, bus info and trip info, calc emissions
   app.get('/calculate_emissions', async (req, res) => {
     let carbonCalc = require("../models/carbon-calc.js");
     let weightFactors = require("../models/weight-factor.js");
     let trips = await dbo.collection("main_collection").aggregate([
       {
-        "$limit" : 10
+        "$match" : {}
       }
     ]).toArray();
     trips.forEach((element) => {
-      let vehicle = FLEET_LIST[element.realtime_observation.vehicle_id];
-      let weight_ratio = (0.00004711 * parseInt(vehicle["TARE Weight (Kg)"])) + 0.446;
-      // weightFactors.weight_factor(vehicle["Bus Size"], parseInt(vehicle["TARE Weight (KG)"]), parseInt(element["pax_km"]), element.distance); 
+      if (element.realtime_observation != undefined &&
+        element.realtime_observation.stop_time_arrival != undefined &&
+        FLEET_LIST[element.realtime_observation.vehicle_id] != undefined) {
+        let vehicle = FLEET_LIST[element.realtime_observation.vehicle_id];
+        let weight_ratio = (0.00004711 * parseInt(vehicle["TARE Weight (Kg)"])) + 0.446;
+        // weightFactors.weight_factor(vehicle["Bus Size"], parseInt(vehicle["TARE Weight (KG)"]), parseInt(element["pax_km"]), element.distance); 
 
-      // Change to all pollutants
-      for (let p of ["FC", "CO", "CO2-equiv"]) {
-        let total = 0;
-        if (p === "CO2-equiv") {
-          total = carbonCalc.calc_CO2_equiv(element["FC"], element.distance, element.engine_type);
-        } else if (element.engine_type === 'ELECTRIC') {
-          total = 0;
-        } else {
-          //Use the emissions profiles from the requires, look at how its done in the index.js
-          //Look at getting the information for the emissions profiles id from the trip
-          //lookup the function from pollutant_equations
-          //yay?
-          // let vprof = vehicle.profile[p];
-          // let size = vehicle["Bus Size"] === "SV" ? "Small" : "Standard";
-          let vprof = config.EMISSION_PROFILES.filter(d => { return d._id.size === "Standard" && d._id.engine === element.engine_type && d._id.Pollutant === p })[0];
-          let prof = config.pollutant_equations[vprof.equation];
-          let emissions_km = ((1 / 0.835) * prof(element.speed, vprof.a, vprof.b, vprof.c, vprof.d, vprof.e, vprof.f, vprof.g)) / 1000;
-          let service = emissions_km * weight_ratio * (element.distance);
-          let repos = emissions_km * weight_ratio * (0.15 * element.distance);
-          total = service + repos;
+        // Change to all pollutants
+        for (let p of ["FC", "HC", "PM", "NOx", "CO", "CO2-equiv"]) {
+          let total = 0;
+          if (p === "CO2-equiv") {
+            total = carbonCalc.calc_CO2_equiv(element["FC"], (element.distance / 1000), element.engine_type);
+          } else if (element.engine_type === 'ELECTRIC') {
+            total = 0;
+          } else {
+            //Use the emissions profiles from the requires, look at how its done in the index.js
+            //Look at getting the information for the emissions profiles id from the trip
+            //lookup the function from pollutant_equations
+            //yay?
+            // let vprof = vehicle.profile[p];
+            // let size = vehicle["Bus Size"] === "SV" ? "Small" : "Standard";
+            
+            // Save us from the misformed data
+            let engine_type = element.engine_type === "EURO" ? "EURO3" : element.engine_type;
+            let vprof = config.EMISSION_PROFILES.filter(d => { return d._id.size === "Standard" && d._id.engine === engine_type && d._id.Pollutant === p })[0];
+              let prof = config.pollutant_equations[vprof.equation];
+              // The formula calculates per m, we use per km
+              let emissions_km = ((1 / 0.835) * prof(element.speed, vprof.a, vprof.b, vprof.c, vprof.d, vprof.e, vprof.f, vprof.g)) / 1000;
+  
+              // Our distance is in m, the formula calls for km
+              let distance = element.distance / 1000;
+  
+              let service = emissions_km * weight_ratio * (distance);
+              let repos = emissions_km * weight_ratio * (0.15 * distance);
+              total = service + repos;
+          }
+          let property = p === "CO2-equiv" ? "CO2" : p;
+          element[property] = total;
         }
-        let property = p === "CO2-equiv" ? "CO2" : p;
-        element[property] = total;
+      } else {
+        for (let p of ["FC", "HC", "PM", "NOx", "CO", "CO2-equiv"]) {
+          let property = p === "CO2-equiv" ? "CO2" : p;
+          element[property] = 0;
+        }
       }
+
     });
     console.log(trips);
+
+    fs.writeFileSync("./dataBackups/emissions_AT_20201224-20201230.json", JSON.stringify(trips));
+    let csv = new ObjectsToCsv(trips);
+    await csv.toDisk("./dataBackups/emissions_AT_20201224-20201230.csv");
   })
 })
 
