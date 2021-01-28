@@ -1,8 +1,4 @@
-<<<<<<< Updated upstream
-﻿Mode,Year,Month,Display Route Number,PTOM vehicle type,Rapid vehicle number,Vehicle trips,Vehicle kms,Pax,Pax kms
-=======
 Mode,Year,Month,Display Route Number,PTOM vehicle type,Rapid vehicle number,Vehicle trips,Vehicle kms,Pax,Pax kms
->>>>>>> Stashed changes
 Bus,2020,12,101,LB-D,14011,1,19.576,2,7.255
 Bus,2020,12,101,LB-D,14041,1,20.058,3,10.149
 Bus,2020,12,101,LB-D,14049,1,19.576,2,10.337

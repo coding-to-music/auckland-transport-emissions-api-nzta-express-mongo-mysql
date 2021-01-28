@@ -89,7 +89,7 @@ app.get('/mongoInterface', async (req, res) => {
 
 client.connect(async (err, db) => {
   //Set db object
-  let dbo = db.db(config.testing.db);
+  let dbo = db.db("buildScheduleToJan");
   let collection = dbo.collection("realtime_raw");
   // let routesThatAraValid = await dbo.collection("filtered_trips")
   //   .aggregate(
@@ -530,7 +530,7 @@ client.connect(async (err, db) => {
   app.get("/generate_schedule", async (req, res) => {
     // ************************ FORM RAW DATA ************************
     // Fix this date
-    let dateToCheck = formDateArray(new Date(2020, 11, 24), new Date(2020, 11, 31));
+    let dateToCheck = formDateArray(new Date(2020, 11, 24), new Date(2021, 0, 12));
     let trips = dbo.collection("realtime_raw");
 
     console.log(dateToCheck);
@@ -618,7 +618,7 @@ client.connect(async (err, db) => {
     let excss = await dbo.collection("calendarDate").aggregate([
       {
         "$match": {
-          "date": { "$gte": "2020-12-24T00:00:00.000Z", "$lte": "2020-12-31T00:00:00.000Z" },
+          "date": { "$gte": "2020-12-24T00:00:00.000Z", "$lte": "2021-01-12T00:00:00.000Z" },
         }
       },
       {
@@ -643,7 +643,7 @@ client.connect(async (err, db) => {
     // TODO: MAKE THIS QUERY MORE MODULAR
     let docsNeedingUUIDS = await dbo.collection("filtered_trips").find({
         "service_days.start_date": { "$gte": "2020-12-24T00:00:00.000Z" },
-        "service_days.end_date": { "$lte": "2020-12-31T00:00:00.000Z" },
+        "service_days.end_date": { "$lte": "2021-01-12T00:00:00.000Z" },
       }, {}).toArray();
       let modifiedDocs = [];
       console.log(docsNeedingUUIDS);
@@ -1264,6 +1264,8 @@ client.connect(async (err, db) => {
   });
 
   // Join the raw to the final. Used to calc speed
+  // Writes to new collection main_collection
+  // main_collection used by calc_emissions below
   app.get('/join_raw_routes_to_final', async (req, res) => {
     // let needSpeed = await dbo.collection("raw_w_routes").aggregate([
     //   {
@@ -1310,7 +1312,7 @@ client.connect(async (err, db) => {
     // ]).toArray();
   // console.log(needSpeed);
   let match = [];
-  for (let date of formDateArray(new Date(2020, 11, 24), new Date(2021, 0, 1))) {
+  for (let date of formDateArray(new Date(2020, 11, 24), new Date(2021, 0, 13))) {
     match.push({"UUID" : new RegExp("^" + date)});
   }
   await dbo.collection("final_trip_UUID_set").createIndex({"UUID" : 1});
@@ -1334,7 +1336,7 @@ client.connect(async (err, db) => {
             "cond" : {
               "$and" : [
                 {"$gte" : [{"$arrayElemAt" : [{"$split": ["$$journey", "-"]},0]}, "20201224"]},
-                {"$lte" : [{"$arrayElemAt" : [{"$split": ["$$journey", "-"]},0]}, "20201231"]},
+                {"$lte" : [{"$arrayElemAt" : [{"$split": ["$$journey", "-"]},0]}, "20210112"]},
               ]
             }
           }
@@ -1344,7 +1346,6 @@ client.connect(async (err, db) => {
         "trip_id" : 1,
         "trip_headsign" : 1,
         "direction_id" : 1,
-        "block_id" : 1,
         "shape_id" : 1,
         "trip_short_name" : 1,
         "trip_type" : 1,
@@ -1354,7 +1355,6 @@ client.connect(async (err, db) => {
         "route_short_name" : 1,
         "route_long_name" : 1,
         "route_type" : 1,
-        "calendar_services" : 1
       }
     },
     {
@@ -1385,6 +1385,8 @@ client.connect(async (err, db) => {
     {
       "$addFields" : {
         "departure" : "$realtime_observation.start_time",
+        "date" : "$realtime_observation.date",
+        "vehicle" : "$realtime_observation.vehicle_id"
       }
     },
   ]).toArray();
@@ -1402,7 +1404,6 @@ client.connect(async (err, db) => {
         let endTime = new Date( parseInt(journey.realtime_observation.stop_time_arrival.time * 1000));
         journey.speed = (journey.distance) / (Math.abs(endTime - startTime) / 1000);
         journey.time = (Math.abs(endTime - startTime) / 1000);
-        console.log(journey.realtime_observation.vehicle_id);
         if (FLEET_LIST[journey.realtime_observation.vehicle_id] != undefined) {
           journey.engine_type = FLEET_LIST[journey.realtime_observation.vehicle_id]["Engine Rating"];
         } else {
@@ -1423,7 +1424,61 @@ client.connect(async (err, db) => {
 
   // Join the pax_km to the 
   app.get('/join_pax_km', async (req, res) => {
+    dbo.collection("main_collection").createIndex({"UUID" : 1}).then(() => "Index created!");
+    // console.log("Hello");
+    // console.log(PAX_KM); 
+    let collectionData = await dbo.collection("main_collection").aggregate([
+      {
+      "$match" : {
+        "realtime_observation.date" : {"$gte" : "20201224", "$lte" : "20201230"}
+      }
+    }
+  ]).toArray();
+    for (let trip of collectionData) {
+      let paxKey = `${trip.route_short_name}_${trip.realtime_observation.vehicle_id}`;     
+      if (paxKey in PAX_KM) {
+        let paxInfoForVehicle = PAX_KM[paxKey];
+        // Be aware this is using our distances, we may need to change to their distances
+        let distance = paxInfoForVehicle["Vehicle kms"] / paxInfoForVehicle["Vehicle trips"];
+        trip.avg_dist = distance;
+        trip.pax_km = paxInfoForVehicle["Pax kms"] / paxInfoForVehicle["Vehicle trips"];
+      } else {
+        // console.log(PAX_KM["861_22496"]);
+        // console.log(paxKey)
+        trip.avg_dist = 0;
+        trip.pax_km = 0;
+      }
+    }
 
+    let pax0 = [];
+    let paxMissing = [];
+    let bulk = dbo.collection("main_collection").initializeOrderedBulkOp();
+    for (let doc of collectionData) {
+      if (!doc.hasOwnProperty("pax_km")) {
+        paxMissing.push(doc);
+      } else {
+        if (doc.pax_km <= 0) {
+          pax0.push(doc);
+        }
+      }
+      bulk.find({
+        "UUID": doc.UUID
+      }).updateOne({
+        "$set": doc
+      });
+      // //Upsert entry for trip
+      bulk.find({
+        "UUID": doc.UUID
+      }).upsert().updateOne({
+        "$setOnInsert": doc
+      });
+    }
+    
+    await bulk.execute((err, updateResult) => {
+      if (err) throw err;
+      console.log(err, updateResult);
+      console.log("Finished adding pax_kms to collection");
+    });
   })
 
   // Using speed, pax km, bus info and trip info, calc emissions
@@ -1440,7 +1495,7 @@ client.connect(async (err, db) => {
         element.realtime_observation.stop_time_arrival != undefined &&
         FLEET_LIST[element.realtime_observation.vehicle_id] != undefined) {
         let vehicle = FLEET_LIST[element.realtime_observation.vehicle_id];
-        let weight_ratio = (0.00004711 * parseInt(vehicle["TARE Weight (Kg)"])) + 0.446;
+        let weight_ratio = weightFactors.weight_factor("Standard", parseInt(vehicle["TARE Weight (Kg)"]), parseInt(element.pax_km), element.distance);
         // weightFactors.weight_factor(vehicle["Bus Size"], parseInt(vehicle["TARE Weight (KG)"]), parseInt(element["pax_km"]), element.distance); 
 
         // Change to all pollutants
@@ -1468,8 +1523,8 @@ client.connect(async (err, db) => {
               // Our distance is in m, the formula calls for km
               let distance = element.distance / 1000;
   
-              let service = emissions_km * weight_ratio * (distance);
-              let repos = emissions_km * weight_ratio * (0.15 * distance);
+              let service = emissions_km * weight_ratio["loaded"] * (distance);
+              let repos = emissions_km * weight_ratio["empty"] * (0.15 * distance);
               total = service + repos;
           }
           let property = p === "CO2-equiv" ? "CO2" : p;
@@ -1485,9 +1540,9 @@ client.connect(async (err, db) => {
     });
     console.log(trips);
 
-    fs.writeFileSync("./dataBackups/emissions_AT_20201224-20201230.json", JSON.stringify(trips));
+    fs.writeFileSync("./dataBackups/emissions_AT_20201224-20210112.json", JSON.stringify(trips));
     let csv = new ObjectsToCsv(trips);
-    await csv.toDisk("./dataBackups/emissions_AT_20201224-20201230.csv");
+    await csv.toDisk("./dataBackups/emissions_AT_20201224-20210112.csv");
   })
 })
 

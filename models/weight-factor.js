@@ -4,9 +4,10 @@ function weight_factor(size, weight, passengerKm, serviceKm) {
   
     // Calculate average passenger loading for each trip
     let avePaxLoading = passengerKm ? passengerKm / serviceKm : 0;
+    if (isNaN(avePaxLoading)) {avePaxLoading = 0;}
   
     // Calculate average weight including average passenger loading mass 
-    let loadedWeight = weight + (avePaxLoading * PASSENGER_WEIGHT);
+    let loadedWeight = weight + (avePaxLoading * 80);
   
     // Emissions Impossible weighted ratio based on small or large vehicle
     if (size == "SV"){
