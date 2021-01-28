@@ -1263,6 +1263,44 @@ client.connect(async (err, db) => {
     console.log(observedDistance / 1000);
   });
 
+  app.get('/fill_missing_data', async (req, res) => {
+    let entireSet = await dbo.collection("raw_w_routes").find({}).toArray();
+    let fleetProfile = {
+      "EURO3" : 0,
+      "EURO4" : 0,
+      "EURO5" : 0,
+      "EURO6" : 0,
+      "total" : 0
+    }
+
+    for (let trip of entireSet) {
+      fleetProfile["total"] = fleetProfile["total"] + 1;
+      fleetProfile[trip.engine_type] = fleetProfile[trip.engine_type] + 1;
+    }
+    let missingInfo = await dbo.collection("raw_w_routes").aggregate([
+      {
+        "$match" : {
+          "realtime_observation" : {"$exists" : 0}
+        }
+      }
+    ]).toArray();
+    
+    // for () {
+
+    // }
+    let missingVehicle = await dbo.collection("raw_w_routes").aggregate([
+      {
+        "$match" : {
+          "$and" : [
+            {"realtime_observation" : {"$exists" : 1}},
+            {"realtime_observation.vehicle_id" : {"$exists" : 0}},
+          ]
+          
+        }
+      }
+    ]).toArray();
+  })
+
   // Join the raw to the final. Used to calc speed
   // Writes to new collection main_collection
   // main_collection used by calc_emissions below
@@ -1318,6 +1356,7 @@ client.connect(async (err, db) => {
   await dbo.collection("final_trip_UUID_set").createIndex({"UUID" : 1});
   await dbo.collection("raw_w_routes").createIndex({"UUID" : 1});
   console.log("Yee we running")
+
   let needSpeed = await dbo.collection("final_trip_UUID_set").aggregate([
     {
       "$match" : {
@@ -1487,16 +1526,19 @@ client.connect(async (err, db) => {
     let weightFactors = require("../models/weight-factor.js");
     let trips = await dbo.collection("main_collection").aggregate([
       {
-        "$match" : {}
-      }
+        "$match" : {
+          // "pax_km" : {"$exists" : 1}
+        }
+      },
+      // {"$limit" : 10}
     ]).toArray();
     trips.forEach((element) => {
       if (element.realtime_observation != undefined &&
         element.realtime_observation.stop_time_arrival != undefined &&
         FLEET_LIST[element.realtime_observation.vehicle_id] != undefined) {
         let vehicle = FLEET_LIST[element.realtime_observation.vehicle_id];
-        let weight_ratio = weightFactors.weight_factor("Standard", parseInt(vehicle["TARE Weight (Kg)"]), parseInt(element.pax_km), element.distance);
-        // weightFactors.weight_factor(vehicle["Bus Size"], parseInt(vehicle["TARE Weight (KG)"]), parseInt(element["pax_km"]), element.distance); 
+        let weight_ratio = weightFactors.weight_factor("Standard", parseInt(vehicle["TARE Weight (Kg)"]), parseInt(element.pax_km), element.distance / 1000);
+        // let test_weight = (0.00004711 * parseInt(vehicle["TARE Weight (Kg)"])) + 0.446;
 
         // Change to all pollutants
         for (let p of ["FC", "HC", "PM", "NOx", "CO", "CO2-equiv"]) {
@@ -1525,18 +1567,20 @@ client.connect(async (err, db) => {
   
               let service = emissions_km * weight_ratio["loaded"] * (distance);
               let repos = emissions_km * weight_ratio["empty"] * (0.15 * distance);
+              // console.log("Pax - no pax:", service - emissions_km * test_weight * (distance));
               total = service + repos;
           }
           let property = p === "CO2-equiv" ? "CO2" : p;
           element[property] = total;
         }
+        // Car co2 equiv is average light vehicle fuel consumption per km * pax_km
+        element["car_co2_equiv"] = (element.pax_km * config.AVERAGE_LIGHT_VEHICLE_EMISSIONS) / 1000
       } else {
         for (let p of ["FC", "HC", "PM", "NOx", "CO", "CO2-equiv"]) {
           let property = p === "CO2-equiv" ? "CO2" : p;
           element[property] = 0;
         }
       }
-
     });
     console.log(trips);
 

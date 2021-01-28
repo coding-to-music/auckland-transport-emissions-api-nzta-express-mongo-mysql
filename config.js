@@ -26,6 +26,10 @@ config.testing = {};
 config.testing.uri = 'mongodb://127.0.0.1:27017';
 config.testing.db = "test";
 
+config.AVERAGE_LIGHT_VEHICLE_CONS = 9.2; // l/km
+config.PETROL_EMISSION_CONVERSION = 22.961;
+config.AVERAGE_LIGHT_VEHICLE_EMISSIONS = config.AVERAGE_LIGHT_VEHICLE_CONS * config.PETROL_EMISSION_CONVERSION;
+
 config.EMISSION_PROFILES = [
     {"_id":{"size":"Small","engine":"EURO1","Pollutant":"CO"},"equation":"(a+(b/(1+rxp((((-1)*c)+(d*ln(x)))+(e*x)))))","a":0.901035136,"b":31.12677165,"c":-0.371551159,"d":0.666643266,"e":0.039402065},
     {"_id":{"size":"Small","engine":"EURO1","Pollutant":"FC"},"equation":"((a*(b^x))*(x^c))","a":2198.039975,"b":1.009170484,"c":-0.764173015,"d":0,"e":0},
