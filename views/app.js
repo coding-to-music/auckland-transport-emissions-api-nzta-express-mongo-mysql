@@ -1264,7 +1264,7 @@ client.connect(async (err, db) => {
   });
 
   app.get('/fill_missing_data', async (req, res) => {
-    let entireSet = await dbo.collection("raw_w_routes").find({}).toArray();
+    let entireSet = await dbo.collection("main_collection").find({}).toArray();
     let fleetProfile = {
       "EURO3" : 0,
       "EURO4" : 0,
@@ -1274,31 +1274,56 @@ client.connect(async (err, db) => {
     }
 
     for (let trip of entireSet) {
-      fleetProfile["total"] = fleetProfile["total"] + 1;
-      fleetProfile[trip.engine_type] = fleetProfile[trip.engine_type] + 1;
+      if (trip.engine_type != undefined) {
+        fleetProfile["total"] = fleetProfile["total"] + 1;
+        fleetProfile[trip.engine_type] = fleetProfile[trip.engine_type] + 1;
+      }
     }
-    let missingInfo = await dbo.collection("raw_w_routes").aggregate([
+    let obs = await dbo.collection("main_collection").find({"date" : {"$gte" : "20201224", "$lte" : "20201230"},"realtime_observation" : {"$exists" : 0}}).toArray();
+    console.log("Missing observation ", obs.length);
+    let obsV = await dbo.collection("main_collection").find({"date" : {"$gte" : "20201224", "$lte" : "20201230"},"realtime_observation.vehicle_id" : {"$exists" : 0}}).toArray();
+    console.log("Missing vehicle ", obsV.length - obs.length);
+    let stop = await dbo.collection("main_collection").find({"date" : {"$gte" : "20201224", "$lte" : "20201230"},"realtime_observation.stop_time_arrival" : {"$exists" : 0}}).toArray();
+    console.log("Missing stop info ", stop.length - obs.length);
+    let finalStop = await dbo.collection("main_collection").find({"date" : {"$gte" : "20201224", "$lte" : "20201230"},"realtime_observation.arrived?" : false}).toArray();
+    console.log("Missing final stop info (time measurement likely low, or the journey is recorded as too fast) ", finalStop.length);
+    // console.log("Total missing info", obs.length + obsV.length + stop.length + finalStop.length);
+    let missingInfo = await dbo.collection("main_collection").aggregate([
       {
-        "$match" : {
-          "realtime_observation" : {"$exists" : 0}
-        }
+        "$match" : {  
+            "$or" : [
+              {"realtime_observation" : {"$exists" : 0}},
+              {"realtime_observation.vehicle_id" : {"$exists" : 0}},
+              {"realtime_observation.stop_time_arrival" : {"$exists" : 0}}
+            ]
+          }
       }
     ]).toArray();
+    console.log("Total missing info", missingInfo.length);
+    //calc the proportions
+    for (let property of Object.keys(fleetProfile)) {
+      if (property != "total") {
+        fleetProfile[property] = fleetProfile[property] / fleetProfile["total"];
+      }
+    }
     
-    // for () {
-
-    // }
-    let missingVehicle = await dbo.collection("raw_w_routes").aggregate([
-      {
-        "$match" : {
-          "$and" : [
-            {"realtime_observation" : {"$exists" : 1}},
-            {"realtime_observation.vehicle_id" : {"$exists" : 0}},
-          ]
-          
+    for (let doc of missingInfo) {
+      // Randomly assign vehicles among missing info
+      let r = Math.random();
+      let engine_type;
+      let prev_val = 0;
+      for (let property of Object.keys(fleetProfile)) {
+        if (property != "total") {
+          if (r < fleetProfile[property] && r > prev_val) {
+            engine_type = property;
+          }
         }
+        prev_val = fleetProfile[property];
       }
-    ]).toArray();
+      if (engine_type === undefined) engine_type = "EURO6";
+      doc.engine_type = engine_type;
+    }
+    console.log(missingInfo);
   })
 
   // Join the raw to the final. Used to calc speed
