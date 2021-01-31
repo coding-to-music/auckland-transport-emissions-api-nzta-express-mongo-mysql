@@ -33,13 +33,15 @@ let ROUTES_BY_PROVIDER = fs.readFileSync("./public/data/VALID_ROUTES.json");
 ROUTES_BY_PROVIDER = JSON.parse(ROUTES_BY_PROVIDER);
 let VALID_ROUTES = [];
 let VALID_VEHICLES = [];
-    for (let provider of ROUTES_BY_PROVIDER) {
-      for (let entry of provider["routes_short"]) {
-          VALID_ROUTES = VALID_ROUTES.concat(entry);
-      }
-    }
+for (let provider of ROUTES_BY_PROVIDER) {
+  for (let entry of provider["routes_short"]) {
+    VALID_ROUTES = VALID_ROUTES.concat(entry);
+  }
+}
 console.log(VALID_ROUTES);
+let routes = new Set();
 let distances = {};
+let trips = {};
 //Parse the pax_km spreadsheet
 fs.createReadStream('./public/data/Vehicle__Pax_Travel_Metrics.csv')
   .pipe(csv())
@@ -47,6 +49,13 @@ fs.createReadStream('./public/data/Vehicle__Pax_Travel_Metrics.csv')
     let displayRoute = row["Display Route Number"];
     let vehicleID = row["Rapid vehicle number"];
     if( VALID_ROUTES.includes(displayRoute) ) {
+      distances[displayRoute] = distances[displayRoute] != undefined ? 
+        distances[displayRoute] + parseInt(row["Vehicle kms"]) :
+        parseInt(row["Vehicle kms"]);
+      trips[displayRoute] = trips[displayRoute] != undefined ?
+        trips[displayRoute] + parseInt(row["Vehicle trips"]) :
+        parseInt(row["Vehicle trips"]);
+
       let id = displayRoute + "_" + vehicleID;
       VALID_VEHICLES.push(parseInt(vehicleID));
       PAX_KM[id] = row;
@@ -54,9 +63,8 @@ fs.createReadStream('./public/data/Vehicle__Pax_Travel_Metrics.csv')
   })
   .on('end', () => {
     console.log('Pax km CSV file successfully processed');
+    console.log(distances, trips);
   });
-
-  console.log(PAX_KM);
 //DB IMPORTS
 const SQLManagement = require("../SQLManagment.js");
 const SQLPool = new SQLManagement();
@@ -1486,7 +1494,24 @@ client.connect(async (err, db) => {
     console.log("Finished adding speeds to collection");
   })
 
-  // Join the pax_km to the 
+  app.get('/join_distances_from_pax', async (req, res) => {
+    let needDistances = await dbo.collection("main_collection").aggregate([
+      {
+        "$match" : {}
+      }
+    ]).toArray();
+    let missingRoutes = [];
+    for (let doc of needDistances) {
+      if (distances[doc.route_short_name] != undefined) {
+        doc.dist = distances[doc.route_short_name] / trips[doc.route_short_name];
+      } else {
+        missingRoutes.push(doc.route_short_name);
+      }
+    }
+    await dbo.collection("teste").insertMany(needDistances);
+  })
+
+  // Join the pax_km to the main_collection
   app.get('/join_pax_km', async (req, res) => {
     dbo.collection("main_collection").createIndex({"UUID" : 1}).then(() => "Index created!");
     // console.log("Hello");
@@ -1498,6 +1523,8 @@ client.connect(async (err, db) => {
       }
     }
   ]).toArray();
+
+  //Add the vehicle kms
     for (let trip of collectionData) {
       let paxKey = `${trip.route_short_name}_${trip.realtime_observation.vehicle_id}`;     
       if (paxKey in PAX_KM) {
