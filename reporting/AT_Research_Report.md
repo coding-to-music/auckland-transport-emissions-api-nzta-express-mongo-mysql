@@ -62,6 +62,34 @@ The methodology used to apply the model to the Auckland context can be separated
 1. Procurement, joining, and filtering of raw operational data into the form used by the Emissions model.
 2. Using the previously developed Emissions model to estimate and visualise large scale emissions based on the processed operational data.
 
+The aim of the first step is to collate and generate several data fields for each trip in the analysed dataset. For reference, a trip is a sequence of two or more stops undertaken by a specific vehicle on a specific time and date. Each field typically serves one of two primary purposes: to assist with filtering for further analysis/visualisation or as an input to the emissions model. A database schema with these fields and the required data types/formats for our model is included at the end of this report **Confirm this** .
+The data inputs to the emissions model are as follows:
+
+- EURO classification of the engine of the vehicle that carried out the trip.
+- Average speed (in kmh) of the vehicle over the entire trip.
+- The distance of the trip in km.
+- Tare weight (in kg) of the vehicle that carried out the trip.
+- Passenger loading represented by the total distance travelled by individual passengers on the trip in km.
+
+The data fields that assist with filtering and visualisation are as follows:
+
+- Date the trip occurred on.
+- The departure time of the vehicle from the first stop on the route.
+- The name of the route that the trip services.
+- The vehicle ID number that identifies the vehicle that carried out the trip within the operator's fleet list.
+
+The emissions model was developed during the Wellington trial and reused on the Auckland bus operational data. This model is based on formulae from the European Union EMEP/EEA air pollutant emission inventory guidebook and NZTA data on the NZ personal vehicle fleet **references?**. The model estimates the following quantities for each trip:
+
+- Fuel consumed in kg **(or liters?)**.
+- The carbon dioxide equivalent (CO2-equiv) generated in kg. This is the sum of CO2 and the CO2 equivalent of other greenhouse gases (methane & nitrous oxide) produced by the combustion of diesel.
+- The quantities of each of the non-CO2 greenhouse gases (methane and nitrous oxide) produced in kg.
+- The quantities of pollutant gases (carbon monoxide, nitrogen oxides, hydrocarbons, and airborne particulate matter) produced in kg. These gases have a detrimental environmental and health impact in the environment they are emitted in.
+- The CO2-equivalent generated if each passenger had instead travelled in an average personal car as the sole occupant. This is intended as an estimate of the carbon cost of not running a given trip.
+
+The outputs from the model are visualised in a tool called "BEVis" that was developed as an extension of the Wellington trial. These visualisations are displayed later in the report.
+
+The rest of this section will describe the software implementation of this methodology that we developed over the course of this study.
+
 ### Data Sources
 
 The primary data source used for this study was the AT developer's portal API. Scheduled GTFS and real-time data was utilised to generate a complete dataset. We retrieved the following data from the GTFS APIs:
