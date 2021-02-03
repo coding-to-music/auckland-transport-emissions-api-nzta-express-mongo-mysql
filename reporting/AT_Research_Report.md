@@ -143,13 +143,13 @@ Vehicle trips | The number of trips completed by the vehicle on the route over t
 Vehicle kms | The total distance travelled by the vehicle on the route over the specified date range.
 Pax kms | The total distance travelled by passengers on the vehicle on the route over the specified date range.
 
-
-### Realtime Data Collection
-
+<br>
 
 ### Data Collation within the Model
 
 - Supplied by AT, contains tare weight 
+
+Collecting data from the Developer Portal APIs was carried out using automated scripts to pull the real-time data at 30 second intervals. The scheduled (GTFS) data only needed to be collected when a version change occurred. This data was joined using the trip_id, route_id, and servce_id to generate an operational data set. This dataset contains the date, vehicle id, route, and the observed trip duration
 
 ## Assumptions and Interpolations
 
