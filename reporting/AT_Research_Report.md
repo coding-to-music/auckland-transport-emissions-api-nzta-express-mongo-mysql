@@ -173,7 +173,7 @@ The trip instances can be uniquely identified using a concatenation of the date 
 
 <p align=center> Unique Trip Instance Identifier format - <b>[Date]_[Trip_id]</b></p>
 
-**Move the stuff below to assumptions?**
+**Move the schedule validation below to assumptions?**
 
 A collection of scheduled trip instances was also generated to validate the completeness of the real-time data. The scheduled (GTFS) data was collected when a version change occurred. The general process to generate the scheduled trip instances is as follows:
 
@@ -183,7 +183,24 @@ A collection of scheduled trip instances was also generated to validate the comp
 
 The unique identifiers were used to identify the proportion of scheduled trips observed in the real-time data. The proportion of scheduled trips not observed was found to be **TK Percentage**%. This proportion is low enough to assume that any scheduled trips that were not observed did not actually run. As a result, the only Developer's Portal data sources used in the final model were the Real-time Trip Updates and the GTFS routes.
 
-### Vehicle Information
+**End schedule Validation**
+
+- Join to vehicle - vehicle_id
+- Join to distance and pax_km - route_short_name [ discuss issues around this elsewhere ]
+- Then we have all the inputs to calculate emissions on a trip instance basis 
+
+The vehicle data is joined to each trip instance using the *vehicle_id*. This provides each trip instance with the tare weight and the EURO rating of the vehicle that operated it. 
+
+The final data to join in preparation for input into the emissions model is the distance and pax_km data. The provided data was aggregated to the route-vehicle level. I.e. the data contained the distance travelled by a particular vehicle on a particular route over the reviewed time period. As the emissions model operates on the basis of trip instances, this required some assumptions about how to apply the distance and pax_km values to individual trip instances. A summary of the process to assign this data to trip instances is as follows:
+
+- Identify the *vehicle_id* and the *route_short_name* for each real-time trip instance.
+- Use these two values to identify the corresponding entry in the distance/pax_km data.
+- Calculate the average distance and pax_km per trip by dividing the total distance and pax_km by the *Vehicle trips* field. The average distance and pax_km are then assigned to the relevant trip instance.
+
+The assumptions and resulting consequences inherent in this process are detailed further in the next section of the report.  
+Each trip instance now has the required data for the emissions model to estimate the generated emissions for each trip instance. A diagram of the full procedure is included below.
+
+**TK Insert diagram!**
 
 ## Assumptions and Interpolations
 
@@ -193,6 +210,13 @@ The unique identifiers were used to identify the proportion of scheduled trips o
 - Outline the assumptions inherent the model already (e.g. emissions calculated at the trip level based on average speed)
 - Outline the assumptions around passenger loading and the impacts of it on the model
 - Present results of comparison to real fuel consumption data (if we receive the data)
+
+Summary of assumptions?
+
+
+### Distance & Passenger Kilometer Data
+
+### Emissions Model
 
 ## Outputs and Visualisations of the Analysis Tool
 
