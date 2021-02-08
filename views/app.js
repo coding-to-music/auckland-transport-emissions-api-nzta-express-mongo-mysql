@@ -20,9 +20,7 @@ let FLEET_LIST = {};
 fs.createReadStream('./public/data/Auckland Bus Operator Fleetlist 2020.xlsx - Urban Passenger Vehicle List.csv')
   .pipe(csv())
   .on('data', (row) => {
-    if (row["Operator Code"] === "GB" || row["Operator Code"] === "RT") {
       FLEET_LIST[row["Rapid Vehicle Number"]] = row;
-    }
   })
   .on('end', () => {
     console.log('Fleet list CSV file successfully processed');
@@ -38,7 +36,6 @@ for (let provider of ROUTES_BY_PROVIDER) {
     VALID_ROUTES = VALID_ROUTES.concat(entry);
   }
 }
-console.log(VALID_ROUTES);
 let routes = new Set();
 let distances = {};
 let trips = {};
@@ -63,7 +60,10 @@ fs.createReadStream('./public/data/Vehicle__Pax_Travel_Metrics.csv')
   })
   .on('end', () => {
     console.log('Pax km CSV file successfully processed');
-    console.log(distances, trips);
+    for (let key of Object.keys(distances)) {
+      console.log(key, distances[key] / trips[key]);
+    }
+    
   });
 //DB IMPORTS
 const SQLManagement = require("../SQLManagment.js");
@@ -528,6 +528,7 @@ client.connect(async (err, db) => {
     }
   })
 
+  // ***CAUTION**** this method uses hard coded values for dates, please be aware this needs to be changed
   // Auto generate valid trips from realtime_raw
   // Append route information, used to filter to provider
   // Auto generate schedule from trips, routes, calendar and calendarDates
@@ -1334,6 +1335,7 @@ client.connect(async (err, db) => {
     console.log(missingInfo);
   })
 
+  // ***CAUTION**** this method uses hard coded values for dates, please be aware this needs to be changed
   // Join the raw to the final. Used to calc speed
   // Writes to new collection main_collection
   // main_collection used by calc_emissions below
@@ -1421,6 +1423,8 @@ client.connect(async (err, db) => {
     for (let doc of needSpeed) {
       if (distances[doc.route_short_name] != undefined) {
         doc.distance = distances[doc.route_short_name] / trips[doc.route_short_name];
+      } else {
+        distance = "";
       }
     }
     console.log(needSpeed);
