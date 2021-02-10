@@ -24,36 +24,38 @@ Our data pipeline is an implementation for us to show one way to completely gene
 
 Aquiring data, and calling endpoints until `/join_routes_to_final` serve as preprocessing. `/join_pax_km` and `/calculate_emissions` perform the emissions calculating step.
 
+Be aware you may change the connection object via `const client = new MongoClient(config.mongodb.uri, { useUnifiedTopology: true });` OR changing var `config.mongodb.uri` to your connection object.
+
 ### Aquiring data
 
-**_NOTE_** If the current datasets are between generation and the schedule changes (ie we once had trips scheduled for 24.01 but it change on 21.01) please run the `/repair_database` endpoint to fix the dataset before generating the next.
+Be aware you may change the connection object via `const client = new MongoClient(config.mongodb.uri, { useUnifiedTopology: true });` OR changing var `config.mongodb.uri` to your connection object.
 
 #### Realtime Data
 
 The script `realtimeScript\RealtimeScript.js` must be run continuously to create the necessary data from the AT API. This can be deployed on a local machine and left running, however this is vulnerable to power failures. It was previously run inside a screen env on a server master node for ~2months with approx ~24hrs downtime.
 
-The subscription key can be changed with the var at the top (serach for "let key"). Be aware you may change the connection object via `const client = new MongoClient(config.mongodb.uri, { useUnifiedTopology: true });` OR changing var `config.mongodb.uri` to your connection object.
+The subscription key can be changed with the var at the top (serach for "let key").
 
 #### Schedule Data
 
 The script `models\scheduleConfiguration.js` can be run once everytime the schedule changes.
 
-Be aware you may change the connection object via `const client = new MongoClient(config.mongodb.uri, { useUnifiedTopology: true });` OR changing var `config.mongodb.uri` to your connection object.
+**_NOTE_** If the current datasets are between generation and the schedule changes (ie we once had trips scheduled for 24.01 but it change on 21.01) please run the `/repair_database` endpoint to fix the dataset before generating the next.
 
 ### Installing necessary data
 
 Assuming you have run the script to pull the schedule automatically, and you have the data needed, data can be inserted using the mongoimport tool (Windows dist here: https://docs.mongodb.com/database-tools/installation/installation-windows/). Heres an example of the import urls for our datasets:
 
-mongoimport --db teste --collection calendar --drop --file "calendar.json"
-mongoimport --db teste --collection calendarDate --drop --file "calendarDate.json"
-mongoimport --db teste --collection routes --drop --file "realtime_raw.json"
-mongoimport --db teste --collection routes --drop --file "routes.json"
-mongoimport --db teste --collection trips --drop --file "trips.json"
-mongoimport --db teste --collection versions --drop --file "versions.json"
+`mongoimport --db teste --jsonArray --collection calendar --drop --file "calendar.json"
+mongoimport --db teste --jsonArray --collection calendarDate --drop --file "calendarDate.json"
+mongoimport --db teste --collection realtime_raw --drop --file "realtime_raw.json"
+mongoimport --db teste --jsonArray --collection routes --drop --file "routes.json"
+mongoimport --db teste --jsonArray --collection trips --drop --file "trips.json"
+mongoimport --db teste --jsonArray --collection versions --drop --file "versions.json"`
 
-**_NOTE_** There is no connection URL in these imports so we will import these to a local db. Please ensure that your db connection objects are consistent across files, and match the db you import these collections to.
+**_NOTE_** There is no connection URL in these imports so mongoimport will import these to a local db. Please ensure that your db connection objects are consistent across files, and match the db you import these collections to.
 
-The main endpoints of interest to generate the necessary dataset are:
+The main endpoints to generate the necessary dataset are:
 - `/generate_schedule`
 - `/join_raw_routes_to_final`
 - `/join_pax_km`
@@ -63,7 +65,9 @@ In order to use these end points, we need the schedule information in the format
 
 The connection object within `views\app.js` at the top must be changed to suit your connection to your database. It currently looks like `const client = new MongoClient(config.testing.uri, { useUnifiedTopology: true });`, prehaps with a different first arg (the connection uri). The db object (search for "let dbo") must also be changed to the correct collection for your data.
 
-Finally, calling these endpoints in order will generate the completed dataset.
+The pipeline has some dependancies on hardcoded dates, this is mainly due to time constraints. Please change the hard coded dates in the four endpoints above to suit your dataset, otherwise the pipeline will not work.
+
+Finally, calling these 4 endpoints above in order will generate the completed dataset.
 
 ## API
 

@@ -152,6 +152,10 @@ client.connect(async (err, db) => {
     }
   }
 
+  // Test that all the trips are getting distinct UUIDs.
+  // Used to check the validity of our method, and that trips are not 
+  // observed twice.
+  // Uses: raw_w_routes
   app.get('/distinct', async (req, res) => {
     //render page  
     await dbo.collection("raw_w_routes").distinct("UUID", {"date" : {"$gte" : "20201224", "$lte" : "20201231"}}, {}, function (err, results) {
