@@ -264,23 +264,24 @@ To process data on the version of the tool you are running:
 
 1. Open the control window using the menu button in the top right corner.
 
-[menu button](./images/menu_button_tutorial.png)
+<img src="./images/menu_button_tutorial.png" height="300"/>
 
 2. Select your dataset. 
     - Datasets "Metlink Data" and "Auckland Transport Data" are preprocessed; you can use the visualisations immediately.
     - Custom data can be loaded into the tool and the tool will attempt to create the data needed, which then can be used in the visualisations.
 3. If you wish to use custom data:
-[custom data inputs button](./images/menu_custom_data.png)
+  - Load operational data in the first load file selector.
+  - Fleet List data is loaded in the second file selector.
+  - Pax List data is loaded in the third file selector.
+  - Press the "Process Custom Data" button, and wait. 
+  - *Please be patient*. If the window says it is unresponsive, select *keep waiting*. It will eventually finish. The browser will give you an alert when the pipeline is finished. Only then can you use the tool again.
 
-    - Load operational data in the first load file selector.
-    - Fleet List data is loaded in the second file selector.
-    - Pax List data is loaded in the third file selector.
-    - Press the "Process Custom Data" button, and wait. 
-    - *Please be patient*. If the window says it is unresponsive, select *keep waiting*. It will eventually finish. The browser will give you an alert when the pipeline is finished. Only then can you use the tool again.
-[Wait Button](./images/menu_custom_data_wait_tutorial.png)
+<img src="./images/menu_custom_data.png" height="300"/>
+
+<img src="./images/menu_custom_data_wait_tutorial.png" height="300"/>
 
 4. When the pipeline is finished, a download window will open. There are 9 files in total, each a collection of potential errors or gaps in your dataset.
-[Download Window](./images/menu_custom_download_tutorial.png)
+<img src="./images/menu_custom_download_tutorial.png" height="300"/>
 
 5. Select a visualisation using the dropdown at the bottom of the right side menu.
 
