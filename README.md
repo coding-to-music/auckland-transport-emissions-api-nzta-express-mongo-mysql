@@ -12,7 +12,7 @@ Nodejs is available for download [here](https://nodejs.org/en/download/).
 Installation and Running:
 <ol>
     <li>  In a console, navigate to `YourInstallationDirectory/ATE` </li>
-    <li>  Enter `npm install` 
+    <li>  Enter `npm install package.json` 
           This will install all the necessary packages for our program </li>
     <li>  In the console, while still located in `/ATE` folder, type `node views/app.js` </li>
     <li>  Navigate to `localhost:3000` to interact with the server now running on your machine. </li>
