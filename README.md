@@ -87,5 +87,10 @@ Endpoints:
 `/compare_stops` | Get the stops present in the schedule and compare to the number of stops expected for this trip_id | - | JSON format data of journeys with missing stop information
 `/generate_schedule_distances` | **CAUTION** This uses several thousand API requests and sends each individually due to the design of the API we interact with through the method. Get the distances for each trip in the filtered dataset (excluding service providers). | - | none? 
 `/generate_schedule_stops` | **CAUTION** This uses several thousand API requests and sends each individually due to the design of the API we interact with through the method. Add the scheduled stop sequence to schedule info. | - | none?
-
-## UI
+`/setupPAXKm_collection` | Checks that the passenger kilometers loaded through the filesystem is producing sensible numbers | - | none
+`/pax_km_sanity_check` | Checks that the passenger kilometers loaded through the filesystem is producing sensible numbers | - | none 
+`/generate_observed_distance` | Test if the distances we get from the shape files are the same as theirs from the pax_km collection | - | none 
+`/fill_missing_data` | Used to add bus information to the model for observations missing stop info. Also produces output reporting on observations missing stop info | - | none
+`/join_raw_routes_to_final` | Join the raw to the final. Used to calc speed writes to new collection main_collection. main_collection used by calc_emissions below | - | none 
+`/join_pax_km` | Join the passenger km data to the main_collection. Also creates distances in this version of the pipeline | - | none 
+`/calculate_emissions` | Using speed, pax km, bus info and trip info, calc emissions. Output this file to the filesystem (saves the result to dataBackups/emissions_AT_20201224-20210112). | - | none

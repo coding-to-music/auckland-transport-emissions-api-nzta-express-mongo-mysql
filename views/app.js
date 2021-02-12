@@ -89,6 +89,8 @@ app.get('/', async (req, res) => {
   res.sendFile(path.join(__dirname + "/index/index.html"));
 })
 
+// This is a mini interface for the mongoDB
+// It was a temp experiment, and is kept for testing purposes
 app.get('/mongoInterface', async (req, res) => {
   //render page
   console.log("Yeow, we running bruh dew.");
@@ -97,7 +99,7 @@ app.get('/mongoInterface', async (req, res) => {
 
 client.connect(async (err, db) => {
   //Set db object
-  let dbo = db.db("buildScheduleToJan");
+  let dbo = db.db("test");
   let collection = dbo.collection("realtime_raw");
   // let routesThatAraValid = await dbo.collection("filtered_trips")
   //   .aggregate(
@@ -164,7 +166,7 @@ client.connect(async (err, db) => {
       res.send(results);
     })
 
-    await dbo.collection("raw_w_routes").find({}, {}).toArray((err, docs) => {
+    await dbo.collection("raw_w_routes").find({"date" : {"$gte" : "20201224", "$lte" : "20201231"}}, {}).toArray((err, docs) => {
       if (err) throw err;
       console.log(docs.length)
     })
@@ -290,7 +292,7 @@ client.connect(async (err, db) => {
   app.get("/compare_UUIDs", async (req, res) => {
     console.log("Starting raw to final comparison pipeline");
     let startDate = new Date(2020, 11, 23);
-    let endDate = new Date(2020, 11, 28);
+    let endDate = new Date(2020, 11, 30);
     if (req.query.dates != undefined) {
       let dates = getDatesFromQueryArray(req.query.dates);
       startDate = dates.start;
@@ -374,7 +376,7 @@ client.connect(async (err, db) => {
     await dbo.collection("raw_w_routes").createIndex({ "trip_id": 1 });
     await dbo.collection(config.FINAL_SCHEDULE_COL).createIndex({ "UUID": 1 });
 
-    let dates = formDateArray();
+    let dates = formDateArray(new Date(2020, 11, 24), new Date(2020, 11, 31));
 
     let index = 0;
     while (index < dates.length) {
@@ -916,6 +918,7 @@ client.connect(async (err, db) => {
 
   // This sets up the pax_km collection as raw data in the mongo.
   // The data is easier for me to handle in the mongo than js
+  // Creates: pax_km
   app.get('/setupPAXKm_collection', async (req, res) => {
     // let pax_post = Object.keys(PAX_KM).map(d => {
     //   // LOL JS
@@ -934,6 +937,8 @@ client.connect(async (err, db) => {
     // await dbo.collection("pax_km").insertMany(PAX_KM);
   })
 
+  // This tests the passenger kilomaters for several features
+  // USES: pax_km
   app.get('/test_mongo_pax', async (req, res) => {
     console.log(ROUTES_BY_PROVIDER, VALID_VEHICLES);
     // Match all the trips done by the providers
@@ -1018,6 +1023,8 @@ client.connect(async (err, db) => {
     console.log("Count of buses in pax_km", buses.length);
   })
 
+  // Get shapes from the AT API
+  // NOT USED ANYMORE - Could be useful in the future
   app.get('/get_shapes', async (req, res) => {
     let missingDistances = await dbo.collection("journey_needing_distances").find({}, {}).toArray();
     let shape_ids = new Set();
@@ -1029,12 +1036,18 @@ client.connect(async (err, db) => {
     
   })
 
+  // Useless, used for testing purposes
   app.post('/postThat', (req, res) => {
     //code to perform particular action.
     //To access POST variable use req.body() methods.
     console.log(req.body);
   })
 
+  // Gets distances from the shape files from the AT API and puts them into the
+  // final_trip_UUID_set
+  // USES: final_trip_UUID_set
+  // OVERWRITES: final_trip_UUID_set
+  // CAUTION: USES API KEY WITH SUBSCRIPTION, TAKE CARE (AND GET A KEY)
   app.get('/generate_schedule_distances', async (req, res) => {
 
     let scheduleTrips = dbo.collection("final_trip_UUID_set");
@@ -1096,6 +1109,11 @@ client.connect(async (err, db) => {
 
   })
 
+  // Gets stops in order from the AT API and puts them into the
+  // final_trip_UUID_set
+  // USES: final_trip_UUID_set
+  // OVERWRITES: final_trip_UUID_set
+  // CAUTION: USES API KEY WITH SUBSCRIPTION, TAKE CARE (AND GET A KEY)
   app.get('/generate_schedule_stops', async (req, res) => {
 
     let scheduleTrips = dbo.collection("final_trip_UUID_set");
@@ -1162,6 +1180,8 @@ client.connect(async (err, db) => {
     console.log("Stop sequence update complete  ", allTripIDs[0]);
   })
 
+  // Checks that the passenger kilometers loaded through the filesystem is producing sensible numbers
+  // USES: PAX_KM
   app.get('/pax_km_sanity_check', async (req, res) => {
     let totalDist, unknownDist;
     totalDist = Object.values(PAX_KM).reduce( (sum, row) => sum + parseFloat(row["Vehicle kms"]), 0);
@@ -1237,7 +1257,8 @@ client.connect(async (err, db) => {
       console.log(notCorrect, count, Object.keys(paxData).length);
   })
 
-  // Test if the distances we observe are the same as theirs
+  // Test if the distances we get from the shape files are the same as theirs
+  // from the pax_km collection
   app.get('/generate_observed_distance', async (req, res) => {
     let observedTrips = await dbo.collection("raw_w_routes");
     let dates = formDateArray(new Date(2020, 11, 24), new Date(2021, 00, 01));
@@ -1276,6 +1297,11 @@ client.connect(async (err, db) => {
     console.log(observedDistance / 1000);
   });
 
+  // Used to add bus information to the model for observations missing stop info
+  // **NOT USED** - Since there is no data in our model that has no vehicle but does have stop information,
+  // there is no way to accurately estimate this trips emissions
+  // USES: main_collection
+  // Overwrites: main_collection
   app.get('/fill_missing_data', async (req, res) => {
     let entireSet = await dbo.collection("main_collection").find({}).toArray();
     let fleetProfile = {
@@ -1742,6 +1768,10 @@ function getDatesFromQueryArray(queryDates) {
   return {start: startDate, end: endDate};
 }
 
+/**
+ * Takes a string in the timestamp form "YYYY-MM-DDTHH:MM:SS" and returns a date
+ * @param {String} stringStamp 
+ */
 function createDateFromStringTimestamp(stringStamp) {
   let dateSelection = stringStamp.split("T")[0].split("-");
   let month = parseInt(dateSelection[1]) - 1;
@@ -1764,6 +1794,7 @@ function formGetQuery(endpoint, args) {
   return string;
 }
 
+// Returns the difference between two arrays
 function arr_diff(a1, a2) {
 
   var a = [], diff = [];
@@ -1787,10 +1818,7 @@ function arr_diff(a1, a2) {
   return diff;
 }
 
-/**
- * Helper method and variable for managing parallel requests to the AT API
- */
-
+// Fetch config
 const fetchConfig = {
   method: 'GET', // *GET, POST, PUT, DELETE, etc.
   mode: 'cors', // no-cors, *cors, same-origin
@@ -1798,7 +1826,7 @@ const fetchConfig = {
   credentials: 'same-origin', // include, *same-origin, omit
   headers: {
     'Content-Type': 'application/json',
-    "Ocp-Apim-Subscription-Key": "99edd1e8c5504dfc955a55aa72c2dbac"
+    "Ocp-Apim-Subscription-Key": ""
     // 'Content-Type': 'application/x-www-form-urlencoded',
   },
   redirect: 'follow', // manual, *follow, error
@@ -1806,6 +1834,9 @@ const fetchConfig = {
   //body: JSON.stringify(data) // body data type must match "Content-Type" header
 };
 
+/**
+ * Helper method for managing parallel requests to the AT API
+ */
 async function getMultipleATAPI(url, rtrvTripIDs) {
   let responseArr = [];
 
