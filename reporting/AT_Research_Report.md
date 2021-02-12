@@ -106,7 +106,7 @@ The emissions model was developed during the Wellington trial and reused on the 
 
 A summary diagram showing the process of building our model for this study is below is shown below. The learnings from this exercise led to the development of the data specification in **TODO ref section Data Specification**.
 
-<img src="./images/Pipeline_Implementation.jpg" height="300"/>
+<img src="./images/Pipeline_Implementation.jpg" height="500"/>
 
 The outputs from the model are visualised in a tool called "BEVis" that is a research tool was developed as an extension of the Wellington trial. These visualisations are displayed later in the report.
 
@@ -169,7 +169,7 @@ Pax kms | The total distance travelled by passengers on the vehicle on the route
 
 ### The Data Specification
 
-<img src="./images/Data_Inputs.jpg" height="300"/>
+<img src="./images/Final_Study_Implementation.png" height="300"/>
 
 The data specification is a data model describing the required format for input data in our application. There are three data sources:
 
