@@ -531,12 +531,12 @@ Some images of example visualisations we are able to produce with the previously
 
 
 The Streamchart of emissions from RTH and GBT from 20201223 to 20210112
-<img src="./images/AT_emissions_20201223-20210112.jpg" height="300"/>
+<img src="./images/AT_emissions_20201223-20210112.PNG"/>
 
-<img src="./images/AT_emissions_20201223-20210112_highlight.jpg" height="300"/>
+<img src="./images/AT_emissions_20201223-20210112_highlight.PNG"/>
 
 The Heatchart of emissions from RTH and GBT from 20201223 to 20210112
-<img src="./images/AT_emissions_20201223-20210112_heat.jpg" height="300"/>
+<img src="./images/AT_emissions_20201223-20210112_heat.PNG"/>
 
 ### Datasets Produced
 
