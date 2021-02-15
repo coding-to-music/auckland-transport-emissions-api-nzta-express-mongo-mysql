@@ -29,7 +29,7 @@
 
 ## Abstract
 
-- To be completed
+- Will vary depending on target audience
 
 ## Background and Purpose
 
@@ -171,11 +171,12 @@ The data specification is a data model describing the required format for input 
 - Vehicle Data
 - Pax Data
 
-The specifications for each dataset are **_exactly_** as described in the tables and diagram above. The files must be a csv format, with no commas in any of the string values. Json data is not accepted, for example. The units are descibed below.
+The specifications for each dataset are **_exactly_** as described in the tables and diagram above. The files must be a csv format, with no commas in any of the string values. Json data is not accepted, for example. The order of the columns in the csv does not matter, however all headers in the tables below **must** be present and use the specified spelling. The units are also described below.
 
 **Operational Data**  
+
 Data Field | Units | Format
---- | --- | --- 
+--- | --- | ---
 date | days | String: YYYYMMDD
 vehicle | - | String
 route | - | String
@@ -188,6 +189,7 @@ A sample of the processed operational data from our exercise is below:
 <img src="./images/operational_data_sample.png"/>
 
 **Vehicle Data**
+
 Data Fields | Units | Format
 --- | --- | --- |
 Engine Rating | String | must be one of: 'PRE-EURO', 'EURO1', 'EURO2', 'EURO3', 'EURO4', 'EURO5', 'EURO6', 'EV', or 'ELECTRIC'
@@ -198,6 +200,7 @@ TARE Weight (Kg) | kg | String
 <img src="./images/vehicle_data_sample.png"/>
 
 **Pax Km Information**
+
 Data Fields | Units | Format
 --- | --- | --- 
 date | - | String: YYYYMMDD
@@ -584,4 +587,4 @@ Databases and hosted solutions are difficult to use for free. They are however c
 
 ## Conclusions
 
-- To be completed
+The software-based approach outlined in this report for calculating public bus emissions on a large scale is viable. The model used for this study is based on internationally recognised emissions estimation techniques and **(pending fuel sanity check)** the outputs have been validated against fuel cosumption data. The most significant challenges in scaling this solution to a national level relate to the preprocessing, filtering,  manipulation, and storage of very large quantities of data. The authors believe this task can be accomplished by a software development team with cooperation from the regional transport operators. Further investigation into the costs of implementing an enterprise solution are still required. 
