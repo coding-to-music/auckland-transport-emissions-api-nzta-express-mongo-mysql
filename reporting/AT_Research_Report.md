@@ -163,7 +163,7 @@ Pax kms | The total distance travelled by passengers on the vehicle on the route
 
 ### The Data Specification
 
-<img src="./images/Final_Study_Implementation.png" height="300"/>
+<img src="./images/Final_Study_Implementation.jpg" height="300"/>
 
 The data specification is a data model describing the required format for input data in our application. There are three data sources:
 
