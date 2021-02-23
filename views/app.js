@@ -1573,6 +1573,8 @@ client.connect(async (err, db) => {
         let weight_ratio = weightFactors.weight_factor("Standard", parseInt(vehicle["TARE Weight (Kg)"]), parseInt(element.pax_km), element.distance);
         // let test_weight = (0.00004711 * parseInt(vehicle["TARE Weight (Kg)"])) + 0.446;
 
+        const DIESEL_DENSITY = 0.835;
+
         // Change to all pollutants
         for (let p of ["FC", "HC", "PM", "NOx", "CO", "CO2-equiv"]) {
           let total = 0;
@@ -1593,8 +1595,10 @@ client.connect(async (err, db) => {
             let vprof = config.EMISSION_PROFILES.filter(d => { return d._id.size === "Standard" && d._id.engine === engine_type && d._id.Pollutant === p })[0];
               let prof = config.pollutant_equations[vprof.equation];
               // The formula calculates per m, we use per km
-              let emissions_km = ((1 / 0.835) * prof(element.speed, vprof.a, vprof.b, vprof.c, vprof.d, vprof.e, vprof.f, vprof.g)) / 1000;
-  
+              let emissions_km = (prof(element.speed, vprof.a, vprof.b, vprof.c, vprof.d, vprof.e, vprof.f, vprof.g)) / 1000;
+
+              if (p === "FC") { emissions_km = emissions_km / DIESEL_DENSITY }; // Convert from litres to kg of fuel consumed
+
               // Our distance is in m, the formula calls for km
               let distance = element.distance;
   
