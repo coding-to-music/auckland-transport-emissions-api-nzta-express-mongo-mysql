@@ -17,7 +17,7 @@ const processId = makeid(10);
 //   }
 // }
 
-let key = "b9f2e4f0b5e140b79a698c0bb9298a7f";
+let key = "";
 url = '', data = {};
 
 client.connect(async (err, db) => {
