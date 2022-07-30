@@ -1,7 +1,7 @@
 {
-  "name": "ate",
+  "name": "auckland-transport-emissions-api-nzta-express-mongo-mysql",
   "version": "1.0.0",
-  "description": "",
+  "description": "Nodejs with Express API to pull data from NZTA live feed and post to a db. Example implementation of first stage of full emissions visualization environment.",
   "main": "StartupScript.js",
   "dependencies": {
     "body-parser": "^1.19.0",
@@ -18,6 +18,7 @@
   },
   "devDependencies": {},
   "scripts": {
+    "deploy": "git add . && git commit -m Build && git push",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
